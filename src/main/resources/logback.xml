@@ -11,28 +11,18 @@
     </http>
     <format>
       <label>
-        <pattern>app=mini-stock-exchange,context=${CONTEXT_NAME},host=${HOSTNAME},level=%level,traceID=%X{traceId:-NONE}</pattern>
+        <pattern>app=mini-stock-exchange,host=${HOSTNAME},"trace_id"=%X{traceId:-NONE},level=%level,thread=%thread</pattern>
         <readMarkers>true</readMarkers>
+        <metricsEnabled>true</metricsEnabled>
       </label>
-      <message>
-        <pattern>
-          {
-          "level":"%level",
-          "class":"%logger{36}",
-          "thread":"%thread",
-          "message": "%message",
-          "requestId": "%X{X-Request-ID}",
-          "trace_id": "%X{traceId}",
-          "span_id": "%X{spanId}"
-          }
-        </pattern>
-      </message>
     </format>
+    <message>
+      <pattern>%X{traceId:-NONE} %-5level %logger{36} - %msg%n</pattern>
+    </message>
   </appender>
 
   <root level="INFO">
     <appender-ref ref="CONSOLE"/>
     <appender-ref ref="LOKI" />
   </root>
-
 </configuration>
