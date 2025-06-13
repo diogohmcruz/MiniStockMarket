@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{ISO8601} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %highlight(%msg%n)</pattern>
+    </encoder>
+  </appender>
+  <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+    <http>
+      <url>http://localhost:3100/loki/api/v1/push</url>
+    </http>
+    <format>
+      <label>
+        <pattern>app=mini-stock-exchange,context=${CONTEXT_NAME},host=${HOSTNAME},level=%level,traceID=%X{traceId:-NONE}</pattern>
+        <readMarkers>true</readMarkers>
+      </label>
+      <message>
+        <pattern>
+          {
+          "level":"%level",
+          "class":"%logger{36}",
+          "thread":"%thread",
+          "message": "%message",
+          "requestId": "%X{X-Request-ID}",
+          "trace_id": "%X{traceId}",
+          "span_id": "%X{spanId}"
+          }
+        </pattern>
+      </message>
+    </format>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="LOKI" />
+  </root>
+
+</configuration>
