@@ -9,11 +9,18 @@
         <version>3.5.0</version>
     </parent>
     <groupId>io.github.diogohmcruz</groupId>
-    <artifactId>mini-stock-exchange</artifactId>
-
+    <artifactId>mini-stock-market</artifactId>
     <version>1.0.0</version>
-    <name>mini-stock-exchange</name>
-    <description>Mini Stock Exchange with Spring Boot and Multithreading</description>
+    <packaging>pom</packaging>
+
+    <name>mini-stock-market</name>
+    <description>Mini Stock Market with Spring Boot and Multithreading</description>
+
+    <modules>
+        <module>trader</module>
+        <module>stock-exchange</module>
+        <module>market-library</module>
+    </modules>
 
     <properties>
         <googleJavaFormat.version>1.27.0</googleJavaFormat.version>
@@ -93,6 +100,21 @@
             <artifactId>spring-boot-docker-compose</artifactId>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <scope>annotationProcessor</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-devtools</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-otlp</artifactId>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 
     <repositories>
@@ -110,32 +132,6 @@
 
     <build>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <artifactId>lombok</artifactId>
-                            <groupId>org.projectlombok</groupId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
-            </plugin>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
