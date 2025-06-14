@@ -9,8 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.NamedQueries;
-import jakarta.persistence.NamedQuery;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
@@ -30,18 +28,6 @@ import lombok.NoArgsConstructor;
 @Table(name = "trades")
 @Data
 @NoArgsConstructor
-@NamedQueries({
-  @NamedQuery(
-      name = "Trade.findRecentTradesByTicker",
-      query = "SELECT t FROM Trade t WHERE t.ticker = :ticker " + "ORDER BY t.timestamp DESC"),
-  @NamedQuery(
-      name = "Trade.findTradesByUserInDateRange",
-      query =
-          "SELECT t FROM Trade t "
-              + "WHERE (t.buyerId = :userId OR t.sellerId = :userId) "
-              + "AND t.timestamp BETWEEN :startDate AND :endDate "
-              + "ORDER BY t.timestamp DESC")
-})
 public class Trade {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
