@@ -1,0 +1,30 @@
+name: Maven Package
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '24'
+        distribution: 'temurin'
+        server-id: github
+        settings-path: ${{ github.workspace }}
+
+    - name: Build with Maven
+      run: mvn -B package
+
+    - name: Publish to GitHub Packages Apache Maven
+      run: mvn deploy -s $GITHUB_WORKSPACE/settings.xml
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
