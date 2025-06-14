@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
@@ -8,27 +9,26 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.5.0</version>
     </parent>
+
     <groupId>io.github.diogohmcruz</groupId>
     <artifactId>mini-stock-market</artifactId>
-    <version>1.0.0</version>
+
+    <version>1.1.0</version>
+
     <packaging>pom</packaging>
-
-    <name>mini-stock-market</name>
+    <name>Mini Stock Market</name>
     <description>Mini Stock Market with Spring Boot and Multithreading</description>
-
     <modules>
         <module>market-library</module>
-        <module>stock-exchange</module>
         <module>trader</module>
+        <module>stock-exchange</module>
     </modules>
-
     <properties>
         <googleJavaFormat.version>1.27.0</googleJavaFormat.version>
         <java.version>24</java.version>
         <spotless.version>2.44.4</spotless.version>
         <springdoc.version>2.8.5</springdoc.version>
     </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -126,7 +126,33 @@
     </repositories>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <annotationProcessorPaths>
+                            <path>
+                                <artifactId>spring-boot-configuration-processor</artifactId>
+                                <groupId>org.springframework.boot</groupId>
+                            </path>
+                            <path>
+                                <artifactId>lombok</artifactId>
+                                <groupId>org.projectlombok</groupId>
+                            </path>
+                        </annotationProcessorPaths>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
