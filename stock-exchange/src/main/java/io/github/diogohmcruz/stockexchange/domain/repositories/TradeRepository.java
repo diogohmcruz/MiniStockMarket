@@ -29,10 +29,14 @@ public interface TradeRepository extends JpaRepository<Trade, UUID> {
           + " :id")
   Optional<Trade> findByIdWithOrders(@Param("id") UUID id);
 
-  @Query(name = "Trade.findRecentTradesByTicker")
+  @Query("SELECT t FROM Trade t WHERE t.ticker = :ticker " + "ORDER BY t.timestamp DESC")
   List<Trade> findRecentTradesByTicker(@Param("ticker") String ticker);
 
-  @Query(name = "Trade.findTradesByUserInDateRange")
+  @Query(
+      "SELECT t FROM Trade t "
+          + "WHERE (t.buyerId = :userId OR t.sellerId = :userId) "
+          + "AND t.timestamp BETWEEN :startDate AND :endDate "
+          + "ORDER BY t.timestamp DESC")
   List<Trade> findTradesByUserInDateRange(
       @Param("userId") String userId,
       @Param("startDate") Instant startDate,
@@ -41,9 +45,9 @@ public interface TradeRepository extends JpaRepository<Trade, UUID> {
   @Query("SELECT COUNT(t) FROM Trade t WHERE t.ticker = :ticker AND t.timestamp >= :since")
   long countRecentTrades(@Param("ticker") String ticker, @Param("since") Instant since);
 
-  List<Trade> findByTimestampGreaterThanOrderByTimestampDesc(Instant timestamp);
+  List<Trade> findAllByTimestampGreaterThanOrderByTimestampDesc(Instant timestamp);
 
-  List<Trade> findByTimestampGreaterThanEqual(Instant timestamp);
+  List<Trade> findAllByTimestampGreaterThanEqual(Instant timestamp);
 
   @Query(
       "SELECT t FROM Trade t WHERE t.buyerId = :userId OR t.sellerId = :userId "

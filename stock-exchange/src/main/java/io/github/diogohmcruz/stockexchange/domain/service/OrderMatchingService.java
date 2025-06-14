@@ -57,18 +57,11 @@ public class OrderMatchingService {
         : order2.getPrice().compareTo(order1.getPrice()) >= 0;
   }
 
-  private void executeTrade(Order order1, Order order2) {
+  private Trade executeTrade(Order order1, Order order2) {
     Order buyOrder = order1.getType() == OrderType.BUY ? order1 : order2;
     Order sellOrder = order1.getType() == OrderType.SELL ? order1 : order2;
     Trade trade = new Trade(buyOrder, sellOrder, order2.getPrice());
 
-    tradeService.saveTrade(trade);
-    log.info(
-        "Trade executed: {}x {} at {} between {} and {}",
-        trade.getQuantity(),
-        trade.getTicker(),
-        trade.getPrice(),
-        trade.getBuyerId(),
-        trade.getSellerId());
+    return tradeService.saveTrade(trade);
   }
 }

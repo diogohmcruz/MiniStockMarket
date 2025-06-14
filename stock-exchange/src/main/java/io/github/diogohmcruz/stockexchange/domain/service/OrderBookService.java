@@ -1,50 +1,53 @@
 package io.github.diogohmcruz.stockexchange.domain.service;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.PersistenceContext;
-import java.math.BigDecimal;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
+import io.github.diogohmcruz.stockexchange.domain.repositories.OrderRepository;
+import lombok.Locked;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@Service
 @Slf4j
+@Service
+@RequiredArgsConstructor
 public class OrderBookService {
-
-  @PersistenceContext private EntityManager entityManager;
+  private final OrderRepository orderRepository;
 
   private final Map<String, OrderBook> orderBooks = new ConcurrentHashMap<>();
-  private final ReadWriteLock globalLock = new ReentrantReadWriteLock();
 
   @Transactional
-  public void addOrder(Order order) {
-    entityManager.persist(order);
-    getOrCreateOrderBook(order.getTicker()).addOrder(order);
+  public UUID addOrder(Order order) {
+    var persistedOrder = orderRepository.save(order);
+    var orderBook = getOrCreateOrderBook(persistedOrder.getTicker());
+    var isAdded = orderBook.addOrder(persistedOrder);
+    if (!isAdded) {
+      return null;
+    }
     log.info(
         "New order added: {} {}x {} at {}",
-        order.getType(),
-        order.getQuantity(),
-        order.getTicker(),
-        order.getPrice());
+        persistedOrder.getType(),
+        persistedOrder.getQuantity(),
+        persistedOrder.getTicker(),
+        persistedOrder.getPrice());
+    return persistedOrder.getId();
   }
 
   @Transactional(readOnly = true)
   public Optional<Order> getOrderById(UUID orderId) {
-    return Optional.ofNullable(entityManager.find(Order.class, orderId));
+    return orderRepository.findById(orderId);
   }
 
   @Transactional
@@ -58,20 +61,14 @@ public class OrderBookService {
     Order matchingOrder = orderBook.getBestMatchingOrder(order);
     if (matchingOrder != null) {
       try {
-        // Try to find and lock the order in the database
-        Order freshOrder =
-            entityManager.find(Order.class, matchingOrder.getId(), LockModeType.PESSIMISTIC_WRITE);
+        Order freshOrder = orderRepository.getById(matchingOrder.getId());
 
-        // If order exists and is still valid
-        if (freshOrder != null && freshOrder.isValidForMatching()) {
+        if (freshOrder.isValidForMatching()) {
           return freshOrder;
         }
 
-        // If order is invalid or doesn't exist, remove it from order book
         orderBook.removeOrder(matchingOrder);
-        // Try to find next best match
         return getBestMatchingOrder(order);
-
       } catch (Exception e) {
         log.warn("Failed to refresh order {}: {}", matchingOrder.getId(), e.getMessage());
         orderBook.removeOrder(matchingOrder);
@@ -91,19 +88,20 @@ public class OrderBookService {
     List<Order> orders = orderBook.getActiveBuyOrders();
     List<Order> validOrders = new ArrayList<>();
 
-    for (Order order : orders) {
-      try {
-        Order freshOrder = entityManager.find(Order.class, order.getId());
-        if (freshOrder != null && freshOrder.isValidForMatching()) {
-          validOrders.add(freshOrder);
-        } else {
-          orderBook.removeOrder(order);
-        }
-      } catch (Exception e) {
-        log.warn("Failed to refresh buy order {}: {}", order.getId(), e.getMessage());
-        orderBook.removeOrder(order);
-      }
-    }
+    orders.forEach(
+        order -> {
+          try {
+            Optional<Order> freshOrder = orderRepository.findById(order.getId());
+            if (freshOrder.isPresent() && freshOrder.get().isValidForMatching()) {
+              validOrders.add(freshOrder.get());
+            } else {
+              orderBook.removeOrder(order);
+            }
+          } catch (Exception e) {
+            log.warn("Failed to refresh buy order {}: {}", order.getId(), e.getMessage());
+            orderBook.removeOrder(order);
+          }
+        });
 
     return validOrders;
   }
@@ -120,9 +118,9 @@ public class OrderBookService {
 
     for (Order order : orders) {
       try {
-        Order freshOrder = entityManager.find(Order.class, order.getId());
-        if (freshOrder != null && freshOrder.isValidForMatching()) {
-          validOrders.add(freshOrder);
+        Optional<Order> freshOrder = orderRepository.findById(order.getId());
+        if (freshOrder.isPresent() && freshOrder.get().isValidForMatching()) {
+          validOrders.add(freshOrder.get());
         } else {
           orderBook.removeOrder(order);
         }
@@ -137,8 +135,8 @@ public class OrderBookService {
 
   @Transactional
   public boolean cancelOrder(UUID orderId, String userId) {
-    Order order = entityManager.find(Order.class, orderId, LockModeType.PESSIMISTIC_WRITE);
-    if (order == null || !order.isActive() || !order.getUserId().equals(userId)) {
+    Order order = orderRepository.getById(orderId);
+    if (!order.isActive() || !order.getUserId().equals(userId)) {
       return false;
     }
 
@@ -154,160 +152,25 @@ public class OrderBookService {
 
   @Transactional(readOnly = true)
   public Page<Order> getUserOrders(String userId, boolean includeInactive, Pageable pageable) {
-    String jpql =
-        "SELECT o FROM Order o WHERE o.userId = :userId "
-            + (includeInactive ? "" : "AND o.active = true ")
-            + "ORDER BY o.timestamp DESC";
-
-    var query =
-        entityManager
-            .createQuery(jpql, Order.class)
-            .setParameter("userId", userId)
-            .setFirstResult((int) pageable.getOffset())
-            .setMaxResults(pageable.getPageSize());
-
-    var countQuery =
-        entityManager
-            .createQuery(
-                "SELECT COUNT(o) FROM Order o WHERE o.userId = :userId "
-                    + (includeInactive ? "" : "AND o.active = true "),
-                Long.class)
-            .setParameter("userId", userId);
-
-    var orders = query.getResultList();
-    var total = countQuery.getSingleResult();
-
-    return new org.springframework.data.domain.PageImpl<>(orders, pageable, total);
+    return includeInactive
+        ? orderRepository.findAllByUserIdOrderByTimestampDesc(userId, pageable)
+        : orderRepository.findAllByUserIdAndActiveOrderByTimestampDesc(userId, true, pageable);
   }
 
   @Transactional(readOnly = true)
   public Map<String, Object> getOrderBookStatistics(Instant since) {
-    Map<String, Object> stats = new HashMap<>();
+    var tickers = orderRepository.findAllTickerCounts(since);
+    var tickerCandles = orderRepository.findAllPriceRanges(since);
 
-    String orderCountsJpql =
-        """
-            SELECT o.ticker, o.type, COUNT(o)
-            FROM Order o
-            WHERE o.active = true
-            GROUP BY o.ticker, o.type
-        """;
-
-    var orderCounts =
-        entityManager.createQuery(orderCountsJpql, Object[].class).getResultList().stream()
-            .collect(
-                Collectors.groupingBy(
-                    row -> (String) row[0],
-                    Collectors.toMap(row -> (OrderType) row[1], row -> (Long) row[2])));
-
-    String priceRangesJpql =
-        """
-            SELECT o.ticker,
-                   MIN(CASE WHEN o.type = 'SELL' THEN o.price END),
-                   MAX(CASE WHEN o.type = 'BUY' THEN o.price END)
-            FROM Order o
-            WHERE o.active = true
-            GROUP BY o.ticker
-        """;
-
-    var priceRanges =
-        entityManager.createQuery(priceRangesJpql, Object[].class).getResultList().stream()
-            .collect(
-                Collectors.toMap(
-                    row -> (String) row[0],
-                    row ->
-                        Map.of(
-                            "lowestAsk", row[1] != null ? (BigDecimal) row[1] : BigDecimal.ZERO,
-                            "highestBid", row[2] != null ? (BigDecimal) row[2] : BigDecimal.ZERO)));
-
-    stats.put("orderCounts", orderCounts);
-    stats.put("priceRanges", priceRanges);
-
-    return stats;
+    return Map.of("orderCounts", tickers, "priceRanges", tickerCandles);
   }
 
   private OrderBook getOrCreateOrderBook(String ticker) {
-    OrderBook orderBook = orderBooks.get(ticker);
-    if (orderBook == null) {
-      globalLock.writeLock().lock();
-      try {
-        orderBook = orderBooks.computeIfAbsent(ticker, k -> new OrderBook());
-      } finally {
-        globalLock.writeLock().unlock();
-      }
-    }
-    return orderBook;
+    return Optional.ofNullable(orderBooks.get(ticker)).orElse(createOrderBook(ticker));
   }
 
-  private static class OrderBook {
-    private final PriorityBlockingQueue<Order> buyOrders =
-        new PriorityBlockingQueue<>(
-            11,
-            Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue())
-                .reversed()
-                .thenComparing(Order::getTimestamp));
-
-    private final PriorityBlockingQueue<Order> sellOrders =
-        new PriorityBlockingQueue<>(
-            11,
-            Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue())
-                .thenComparing(Order::getTimestamp));
-
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
-
-    public void addOrder(Order order) {
-      lock.writeLock().lock();
-      try {
-        if (order.getType() == OrderType.BUY) {
-          buyOrders.offer(order);
-        } else {
-          sellOrders.offer(order);
-        }
-      } finally {
-        lock.writeLock().unlock();
-      }
-    }
-
-    public Order getBestMatchingOrder(Order order) {
-      lock.readLock().lock();
-      try {
-        PriorityBlockingQueue<Order> matchingOrders =
-            OrderType.BUY.equals(order.getType()) ? sellOrders : buyOrders;
-
-        return matchingOrders.peek();
-      } finally {
-        lock.readLock().unlock();
-      }
-    }
-
-    public void removeOrder(Order order) {
-      lock.writeLock().lock();
-      try {
-        if (order.getType() == OrderType.BUY) {
-          buyOrders.remove(order);
-        } else {
-          sellOrders.remove(order);
-        }
-      } finally {
-        lock.writeLock().unlock();
-      }
-    }
-
-    public List<Order> getActiveBuyOrders() {
-      lock.readLock().lock();
-      try {
-        return new ArrayList<>(buyOrders);
-      } finally {
-        lock.readLock().unlock();
-      }
-    }
-
-    public List<Order> getActiveSellOrders() {
-      lock.readLock().lock();
-      try {
-        return new ArrayList<>(sellOrders);
-      } finally {
-        lock.readLock().unlock();
-      }
-    }
+  @Locked.Write
+  private OrderBook createOrderBook(String ticker) {
+    return orderBooks.computeIfAbsent(ticker, OrderBook::new);
   }
 }

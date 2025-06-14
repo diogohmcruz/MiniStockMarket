@@ -5,12 +5,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import io.github.diogohmcruz.stockexchange.domain.model.Trade;
+import io.github.diogohmcruz.stockexchange.domain.model.TradeStatistics;
 import io.github.diogohmcruz.stockexchange.domain.repositories.TradeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -85,7 +86,7 @@ public class TradeService {
     Map<String, BigDecimal> latestPrices = new HashMap<>();
 
     List<Trade> recentTrades =
-        tradeRepository.findByTimestampGreaterThanOrderByTimestampDesc(oneDayAgo);
+        tradeRepository.findAllByTimestampGreaterThanOrderByTimestampDesc(oneDayAgo);
 
     recentTrades.stream()
         .filter(trade -> !latestPrices.containsKey(trade.getTicker()))
@@ -96,13 +97,9 @@ public class TradeService {
 
   @Transactional(readOnly = true)
   public Map<String, TradeStatistics> getTickerStatistics(Instant since) {
-    List<Trade> trades = tradeRepository.findByTimestampGreaterThanEqual(since);
-    Map<String, List<Trade>> tradesByTicker = new HashMap<>();
-
-    trades.forEach(
-        trade -> {
-          tradesByTicker.computeIfAbsent(trade.getTicker(), k -> new ArrayList<>()).add(trade);
-        });
+    Map<String, List<Trade>> tradesByTicker =
+        tradeRepository.findAllByTimestampGreaterThanEqual(since).stream()
+            .collect(Collectors.groupingBy(Trade::getTicker));
 
     return tradesByTicker.entrySet().stream()
         .collect(
@@ -140,7 +137,7 @@ public class TradeService {
   @Transactional(readOnly = true)
   public Map<String, Integer> getDailyTradingVolume() {
     Instant oneDayAgo = Instant.now().minus(24, ChronoUnit.HOURS);
-    List<Trade> trades = tradeRepository.findByTimestampGreaterThanEqual(oneDayAgo);
+    List<Trade> trades = tradeRepository.findAllByTimestampGreaterThanEqual(oneDayAgo);
 
     return trades.stream()
         .collect(
@@ -155,11 +152,4 @@ public class TradeService {
         .limit(limit)
         .toList();
   }
-
-  public record TradeStatistics(
-      int tradeCount,
-      BigDecimal minPrice,
-      BigDecimal maxPrice,
-      BigDecimal avgPrice,
-      int totalVolume) {}
 }
