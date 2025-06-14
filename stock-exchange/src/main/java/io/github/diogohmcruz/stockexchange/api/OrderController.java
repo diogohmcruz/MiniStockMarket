@@ -1,8 +1,6 @@
 package io.github.diogohmcruz.stockexchange.api;
 
-import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
 import jakarta.validation.Valid;
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -54,14 +52,10 @@ public class OrderController {
   @PostMapping
   public ResponseEntity<OrderResponse> submitOrder(
       @Valid @RequestBody CreateOrderRequest request, @Valid @RequestHeader("user") String userId) {
-    Order order = toOrder(request, userId);
-
-    if (request.getTtlSeconds() != 3600) {
-      order.setExpirationTime(order.getTimestamp().plusSeconds(request.getTtlSeconds()));
-    }
-
+    var order = toOrder(request, userId);
     orderMatchingService.submitOrder(order);
-    return ResponseEntity.accepted().body(OrderController.fromOrder(order));
+    var orderResponse = fromOrder(order);
+    return ResponseEntity.accepted().body(orderResponse);
   }
 
   @Operation(summary = "Get order by ID")
