@@ -1,0 +1,50 @@
+changelog:
+  exclude:
+    labels:
+      - ignore
+
+  categories:
+    - title: 🚀 New Features
+      labels:
+        - enhancement
+    - title: 🐛 Bug Fixes
+      labels:
+        - bug
+        - fix
+        - regression
+
+    - title: 🧪 Tests & Quality Improvements
+      labels:
+        - test
+        - quality
+        - ci
+        - coverage
+
+    - title: 📚 Documentation Updates
+      labels:
+        - documentation
+        - docs
+        - readme
+
+    - title: ♻️ Code Refactoring
+      labels:
+        - refactor
+        - cleanup
+
+    - title: 🔧 Build & Dependencies
+      labels:
+        - build
+        - dependencies
+        - chore
+
+    - title: 🗃️ Infrastructure & DevOps
+      labels:
+        - infra
+        - devops
+        - docker
+        - k8s
+        - github-actions
+
+    - title: 🔄 Miscellaneous Changes
+      labels:
+        - "*"
