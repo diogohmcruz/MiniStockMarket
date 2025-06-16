@@ -48,6 +48,16 @@ public class GlobalExceptionHandler {
     return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<Object> handleConstraintViolation(IllegalArgumentException ex) {
+    Map<String, Object> body = Map.of(
+        "timestamp", Instant.now(),
+        "status", HttpStatus.BAD_REQUEST.value(),
+        "error", HttpStatus.BAD_REQUEST.getReasonPhrase(),
+        "message", ex.getMessage());
+    return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Object> handleAllExceptions(Exception ex) {
     Map<String, Object> body = new HashMap<>();

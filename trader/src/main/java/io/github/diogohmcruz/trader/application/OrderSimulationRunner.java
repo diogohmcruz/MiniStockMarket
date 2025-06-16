@@ -6,6 +6,7 @@ import java.util.concurrent.Executors;
 
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import io.github.diogohmcruz.marketlibrary.api.dto.CreateOrderRequest;
@@ -13,6 +14,9 @@ import io.github.diogohmcruz.marketlibrary.api.dto.OrderResponse;
 import io.github.diogohmcruz.trader.infrastructure.config.TraderThreadFactory;
 import io.github.diogohmcruz.trader.infrastructure.generator.RandomOrderGenerator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.reactive.function.client.WebClientException;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Slf4j
 @Service
@@ -51,7 +55,16 @@ public class OrderSimulationRunner {
   }
 
   private static Void handleException(Throwable ex, CreateOrderRequest order) {
-    log.error("Failed to send order: {}", order, ex);
+    var cause = ex.getCause();
+    if (cause instanceof WebClientException) {
+      var isResponse = cause instanceof WebClientResponseException;
+      var causeMessage = isResponse
+          ? ((WebClientResponseException) cause).getResponseBodyAsString()
+          : ((WebClientRequestException) cause).getClass().getName();
+      log.error("Failed to send order: {} with cause: {}", order, causeMessage);
+    } else {
+      log.error("Failed to send order: {}", order, cause);
+    }
     return null;
   }
 
