@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 
 import org.springframework.data.domain.Page;
@@ -62,20 +63,16 @@ public class OrderController {
     @ApiResponse(responseCode = "400", description = "Invalid order data provided")
   })
   @PostMapping
-  public DeferredResult<ResponseEntity<OrderResponse>> submitOrder(
+  public CompletableFuture<ResponseEntity<OrderResponse>> submitOrder(
       @Valid @RequestBody CreateOrderRequest request, @Valid @RequestHeader("user") String userId) {
-    DeferredResult<ResponseEntity<OrderResponse>> output = new DeferredResult<>();
-    try (var forkJoinPool = ForkJoinPool.commonPool()) {
-      forkJoinPool.submit(
-          () -> {
-            var order = toOrder(request, userId);
-            orderMatchingService.submitOrder(order);
-            var orderResponse = fromOrder(order);
-            var response = ResponseEntity.accepted().body(orderResponse);
-            output.setResult(response);
-          });
-    }
-    return output;
+    return CompletableFuture.supplyAsync(() -> toOrder(request, userId))
+        .thenApply(order -> {
+      var isAdded = orderMatchingService.submitOrder(order);
+      var status = isAdded ? HttpStatus.OK : HttpStatus.INTERNAL_SERVER_ERROR;
+      var orderResponse = fromOrder(order);
+      return ResponseEntity.status(status)
+          .body(orderResponse);
+    });
   }
 
   @Operation(summary = "Get order by ID")

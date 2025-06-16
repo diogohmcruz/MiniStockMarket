@@ -1,8 +1,10 @@
 package io.github.diogohmcruz.stockexchange.domain.service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
@@ -10,6 +12,9 @@ import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.model.Trade;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpClientErrorException.NotAcceptable;
+import org.springframework.web.client.RestClientException;
 
 @Service
 @Slf4j
@@ -19,12 +24,12 @@ public class OrderMatchingService {
   private final TradeService tradeService;
   private final BlockingQueue<Order> orderQueue = new LinkedBlockingQueue<>();
 
-  public void submitOrder(Order order) {
-    if (order.isValidForMatching()) {
-      orderQueue.offer(order);
-    } else {
-      log.warn("Rejected invalid order {}: expired or inactive", order.getId());
+  public boolean submitOrder(Order order) {
+    if (!order.isValidForMatching()) {
+      String errorMessage = String.format("Rejected invalid order from %s: expired or inactive", order.getUserId());
+      throw new IllegalArgumentException(errorMessage);
     }
+    return orderQueue.offer(order);
   }
 
   public void processOrders() {
