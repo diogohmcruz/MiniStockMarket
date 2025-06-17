@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: stock-exchange
+  cache:
+    type: caffeine
+    cache-names: tickers
+    caffeine:
+      spec: maximumSize=100,expireAfterWrite=30s
+  data:
+    web:
+      pageable:
+        default-page-size: 20
+        max-page-size: 100
+  datasource:
+    url: jdbc:h2:mem:ministockmarket
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+server:
+  compression:
+    enabled: true
+  http2:
+    enabled: true
+  port: 8080
+
+order:
+  default-ttl-seconds: 3600
+  max-ttl-seconds: 86400
+  min-ttl-seconds: 60

@@ -1,0 +1,8 @@
+server:
+  compression:
+    enabled: true
+  port: 8081
+
+spring:
+  application:
+    name: trader
