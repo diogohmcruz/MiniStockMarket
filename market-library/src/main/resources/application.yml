@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: mini-stock-market
+  output:
+    ansi:
+      enabled: always
+  threads:
+    virtual:
+      enabled: true
+
+logging:
+  include-application-name: false
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+          include: '*'
+  otlp:
+    logging:
+      compression: gzip
+      endpoint: http://localhost:3100
+      export:
+        enabled: true
+      transport: http
+    metrics:
+      export:
+        url: http://localhost:4317
+    tracing:
+      compression: gzip
+      endpoint: http://localhost:4317
+      export:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1
