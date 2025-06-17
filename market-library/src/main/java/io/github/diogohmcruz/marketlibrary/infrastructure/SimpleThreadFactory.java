@@ -1,4 +1,4 @@
-package io.github.diogohmcruz.trader.infrastructure.config;
+package io.github.diogohmcruz.marketlibrary.infrastructure;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Builder;
 
 @Builder
-public class TraderThreadFactory implements ThreadFactory {
+public class SimpleThreadFactory implements ThreadFactory {
   private static final AtomicInteger threadNumber = new AtomicInteger(1);
   private String nameFormat;
 
