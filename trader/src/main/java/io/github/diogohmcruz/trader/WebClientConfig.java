@@ -1,11 +1,8 @@
 package io.github.diogohmcruz.trader;
 
-import java.net.http.HttpClient;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.reactive.JdkClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
@@ -14,10 +11,8 @@ public class WebClientConfig {
   private String orderApiUrl;
 
   @Bean
-  public WebClient webClient() {
-    HttpClient httpClient = HttpClient.newHttpClient();
-    return WebClient.builder()
-        .clientConnector(new JdkClientHttpConnector(httpClient))
+  public WebClient webClient(WebClient.Builder builder) {
+    return builder
         .baseUrl(orderApiUrl)
         .build();
   }
