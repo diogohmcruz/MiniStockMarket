@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Ticker {
-  private String ticker;
-  private OrderType type;
-  private Long count;
+    private String ticker;
+    private OrderType type;
+    private Long count;
 }

@@ -25,43 +25,41 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "Tickers", description = "Stock Ticker Management APIs")
 public class TickerController {
 
-  private final TickerService tickerService;
+    private final TickerService tickerService;
 
-  @Operation(
-      summary = "Get all active tickers",
-      description =
-          "Retrieves a list of all stock tickers that have active orders or recent trades")
-  @ApiResponses({
-    @ApiResponse(
-        responseCode = "200",
-        description = "List of active tickers retrieved successfully",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                array = @ArraySchema(schema = @Schema(implementation = String.class))))
-  })
-  @GetMapping
-  public ResponseEntity<List<String>> getAllTickers() {
-    return ResponseEntity.ok(tickerService.getAllActiveTickers());
-  }
+    @Operation(
+            summary = "Get all active tickers",
+            description = "Retrieves a list of all stock tickers that have active orders or recent trades")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "List of active tickers retrieved successfully",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                array = @ArraySchema(schema = @Schema(implementation = String.class))))
+    })
+    @GetMapping
+    public ResponseEntity<List<String>> getAllTickers() {
+        return ResponseEntity.ok(tickerService.getAllActiveTickers());
+    }
 
-  @Operation(
-      summary = "Get detailed ticker information",
-      description =
-          "Retrieves detailed information for all active tickers including latest prices and order"
-              + " counts")
-  @ApiResponses({
-    @ApiResponse(
-        responseCode = "200",
-        description = "Ticker information retrieved successfully",
-        content =
-            @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                array = @ArraySchema(schema = @Schema(implementation = TickerInfo.class))))
-  })
-  @GetMapping("/info")
-  public ResponseEntity<List<TickerInfo>> getTickerInfo() {
-    // This will be implemented in the next version
-    return ResponseEntity.ok(List.of());
-  }
+    @Operation(
+            summary = "Get detailed ticker information",
+            description = "Retrieves detailed information for all active tickers including latest prices and order"
+                    + " counts")
+    @ApiResponses({
+        @ApiResponse(
+                responseCode = "200",
+                description = "Ticker information retrieved successfully",
+                content =
+                        @Content(
+                                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                                array = @ArraySchema(schema = @Schema(implementation = TickerInfo.class))))
+    })
+    @GetMapping("/info")
+    public ResponseEntity<List<TickerInfo>> getTickerInfo() {
+        // This will be implemented in the next version
+        return ResponseEntity.ok(List.of());
+    }
 }

@@ -20,26 +20,25 @@ import io.github.diogohmcruz.stockexchange.domain.model.TickerCandle;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
 
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
-  Order getById(UUID orderId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Order getById(UUID orderId);
 
-  Page<Order> findAllByUserIdOrderByTimestampDesc(String userId, Pageable pageable);
+    Page<Order> findAllByUserIdOrderByTimestampDesc(String userId, Pageable pageable);
 
-  Page<Order> findAllByUserIdAndActiveOrderByTimestampDesc(
-      String userId, boolean b, Pageable pageable);
+    Page<Order> findAllByUserIdAndActiveOrderByTimestampDesc(String userId, boolean b, Pageable pageable);
 
-  @Query(
-      """
+    @Query(
+            """
           SELECT o.ticker AS ticker, o.type AS type, COUNT(o) AS count
           FROM Order o
           WHERE o.active = true
           AND o.timestamp >= :since
           GROUP BY o.ticker, o.type
       """)
-  List<Ticker> findAllTickerCounts(@Param("since") Instant since);
+    List<Ticker> findAllTickerCounts(@Param("since") Instant since);
 
-  @Query(
-      """
+    @Query(
+            """
           SELECT o.ticker AS ticker,
                  MIN(CASE WHEN o.type = 'SELL' THEN o.price END) AS lowestAsk,
                  MAX(CASE WHEN o.type = 'BUY' THEN o.price END) AS highestBid
@@ -48,5 +47,5 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
           AND o.timestamp >= :since
           GROUP BY o.ticker
       """)
-  List<TickerCandle> findAllPriceRanges(@Param("since") Instant since);
+    List<TickerCandle> findAllPriceRanges(@Param("since") Instant since);
 }

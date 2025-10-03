@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication(scanBasePackages = "io.github.diogohmcruz")
 @EnableAsync
 public class TraderApplication {
-  public static void main(String[] args) {
-    SpringApplication.run(TraderApplication.class, args);
-  }
+    public static void main(String[] args) {
+        SpringApplication.run(TraderApplication.class, args);
+    }
 }

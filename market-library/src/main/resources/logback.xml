@@ -11,7 +11,7 @@
     </http>
     <format>
       <label>
-        <pattern>app=mini-stock-exchange,host=${HOSTNAME},"trace_id"=%X{traceId:-NONE},level=%level,thread=%thread</pattern>
+        <pattern>app=mini-stock-exchange,host=${HOSTNAME},trace_id=%X{traceId:-NONE},level=%level,thread=%thread</pattern>
         <readMarkers>true</readMarkers>
         <metricsEnabled>true</metricsEnabled>
       </label>

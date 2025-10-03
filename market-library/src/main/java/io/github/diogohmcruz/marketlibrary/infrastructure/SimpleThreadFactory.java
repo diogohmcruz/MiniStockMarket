@@ -7,12 +7,12 @@ import lombok.Builder;
 
 @Builder
 public class SimpleThreadFactory implements ThreadFactory {
-  private static final AtomicInteger threadNumber = new AtomicInteger(1);
-  private String nameFormat;
+    private static final AtomicInteger threadNumber = new AtomicInteger(1);
+    private String nameFormat;
 
-  @Override
-  public Thread newThread(Runnable runnable) {
-    var name = String.format(this.nameFormat, threadNumber.getAndIncrement());
-    return new Thread(runnable, name);
-  }
+    @Override
+    public Thread newThread(Runnable runnable) {
+        var name = String.format(this.nameFormat, threadNumber.getAndIncrement());
+        return new Thread(runnable, name);
+    }
 }
