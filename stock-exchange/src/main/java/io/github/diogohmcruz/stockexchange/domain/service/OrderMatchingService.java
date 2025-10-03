@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.stockexchange.domain.service;
 
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -27,24 +28,20 @@ public class OrderMatchingService {
         return orderQueue.offer(order);
     }
 
-    public void processOrders() {
-        try {
-            var order = orderQueue.take();
-            if (!order.isValidForMatching()) {
-                log.debug("Skipping invalid order {}: expired or inactive", order.getId());
-                return;
-            }
-
-            var matchingOrder = orderBookService.getBestMatchingOrder(order);
-            if (canMatch(order, matchingOrder)) {
-                executeTrade(order, matchingOrder);
-            } else {
-                orderBookService.addOrder(order);
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            log.error("Order processing interrupted", e);
+    public UUID processOrders() throws InterruptedException {
+        var order = orderQueue.take();
+        if (!order.isValidForMatching()) {
+            log.debug("Skipping invalid order {}: expired or inactive", order.getId());
+            return order.getId();
         }
+
+        var matchingOrder = orderBookService.getBestMatchingOrder(order);
+        if (canMatch(order, matchingOrder)) {
+            executeTrade(order, matchingOrder);
+        } else {
+            orderBookService.addOrder(order);
+        }
+        return order.getId();
     }
 
     private boolean canMatch(Order order1, Order order2) {

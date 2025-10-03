@@ -1,7 +1,7 @@
 package io.github.diogohmcruz.stockexchange.application;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.IntStream;
 
@@ -26,17 +26,18 @@ public class OrderSimulationRunner {
 
     @PostConstruct
     public void processOrders() {
-        IntStream.range(0, executor.getMaxPoolSize())
-                .mapToObj(i -> orderMatchingService)
-                .forEach(this::scheduleNext);
+        IntStream.range(0, executor.getMaxPoolSize()).forEach(i -> this.scheduleNext());
     }
 
-    private void scheduleNext(OrderMatchingService service) {
-        CompletableFuture.runAsync(service::processOrders, executor).thenRun(() -> scheduleNext(service));
+    private void scheduleNext() {
+        CompletableFuture.supplyAsync(this::processOrder, executor).thenRunAsync(this::scheduleNext);
     }
 
-    @PreDestroy
-    public void onShutdown() {
-        executor.shutdown();
+    private UUID processOrder() {
+        try {
+            return orderMatchingService.processOrders();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

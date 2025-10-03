@@ -1,8 +1,8 @@
 package io.github.diogohmcruz.trader.application;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -26,7 +26,6 @@ public class OrderSimulationRunner {
     private final RandomOrderGenerator orderGenerator;
     private final WebClient webClient;
     private final ThreadPoolTaskExecutor executor;
-    private final Object lock = new Object();
 
     public OrderSimulationRunner(
             RandomOrderGenerator orderGenerator,
@@ -61,25 +60,17 @@ public class OrderSimulationRunner {
     }
 
     private void scheduleNext() {
-        CompletableFuture.runAsync(
-                        () -> {
-                            try {
-                                var order = orderGenerator.generateOrderRequest();
-                                sendRequest(order)
-                                        .thenAccept(OrderSimulationRunner::logResponse)
-                                        .exceptionally(ex -> handleException(ex, order));
-
-                                synchronized (lock) {
-                                    lock.wait(50);
-                                }
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                            } catch (Exception e) {
-                                log.error("Unexpected error in order simulation", e);
-                            }
-                        },
+        CompletableFuture.supplyAsync(orderGenerator::generateOrderRequest, executor)
+                .thenApplyAsync(
+                        createOrderRequest -> this.sendRequest(createOrderRequest)
+                                .thenAccept(OrderSimulationRunner::logResponse)
+                                .exceptionally(ex -> handleException(ex, createOrderRequest)),
                         executor)
-                .thenRun(this::scheduleNext);
+                .exceptionally(throwable -> {
+                    log.warn(throwable.getMessage(), throwable);
+                    return null;
+                })
+                .thenRunAsync(this::scheduleNext, CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS, executor));
     }
 
     @Async("traderTaskExecutor")
@@ -93,10 +84,5 @@ public class OrderSimulationRunner {
                 .retrieve()
                 .bodyToMono(OrderResponse.class)
                 .toFuture();
-    }
-
-    @PreDestroy
-    public void onShutdown() {
-        executor.shutdown();
     }
 }
