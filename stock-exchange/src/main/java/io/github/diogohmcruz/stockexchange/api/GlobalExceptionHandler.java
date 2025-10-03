@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -45,6 +46,17 @@ public class GlobalExceptionHandler {
                 "error", HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 "message", ex.getMessage(),
                 "errors", errors);
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Object> handleConstraintViolation(HttpMessageNotReadableException ex) {
+        log.error("HTTP message not readable", ex);
+        var body = Map.of(
+                "timestamp", Instant.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "message", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
     }
 
