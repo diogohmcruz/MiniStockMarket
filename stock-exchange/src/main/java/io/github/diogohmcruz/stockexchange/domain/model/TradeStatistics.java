@@ -10,9 +10,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @AllArgsConstructor
 public class TradeStatistics {
-  private int tradeCount;
-  private BigDecimal minPrice;
-  private BigDecimal maxPrice;
-  private BigDecimal avgPrice;
-  private int totalVolume;
+    private int tradeCount;
+    private BigDecimal minPrice;
+    private BigDecimal maxPrice;
+    private BigDecimal avgPrice;
+    private int totalVolume;
 }

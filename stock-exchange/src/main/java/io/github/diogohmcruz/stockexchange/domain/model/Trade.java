@@ -29,70 +29,69 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 public class Trade {
-  @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
-  private UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-  @NotBlank(message = "Ticker symbol is required")
-  @Pattern(regexp = "^[A-Z]{1,5}$", message = "Ticker must be 1-5 uppercase letters")
-  @Column(nullable = false)
-  private String ticker;
+    @NotBlank(message = "Ticker symbol is required")
+    @Pattern(regexp = "^[A-Z]{1,5}$", message = "Ticker must be 1-5 uppercase letters")
+    @Column(nullable = false)
+    private String ticker;
 
-  @NotNull(message = "Price is required")
-  @DecimalMin(value = "0.01", message = "Price must be greater than 0")
-  @Column(nullable = false)
-  private BigDecimal price;
+    @NotNull(message = "Price is required")
+    @DecimalMin(value = "0.01", message = "Price must be greater than 0")
+    @Column(nullable = false)
+    private BigDecimal price;
 
-  @Min(value = 1, message = "Quantity must be at least 1")
-  @Column(nullable = false)
-  private int quantity;
+    @Min(value = 1, message = "Quantity must be at least 1")
+    @Column(nullable = false)
+    private int quantity;
 
-  @Column(nullable = false)
-  private Instant timestamp;
+    @Column(nullable = false)
+    private Instant timestamp;
 
-  @ManyToOne(
-      fetch = FetchType.LAZY,
-      cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-  @JoinColumn(name = "buy_order_id", nullable = false)
-  private Order buyOrder;
+    @ManyToOne(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "buy_order_id", nullable = false)
+    private Order buyOrder;
 
-  @ManyToOne(
-      fetch = FetchType.LAZY,
-      cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-  @JoinColumn(name = "sell_order_id", nullable = false)
-  private Order sellOrder;
+    @ManyToOne(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "sell_order_id", nullable = false)
+    private Order sellOrder;
 
-  @NotBlank(message = "Buyer ID is required")
-  @Column(name = "buyer_id", nullable = false)
-  private String buyerId;
+    @NotBlank(message = "Buyer ID is required")
+    @Column(name = "buyer_id", nullable = false)
+    private String buyerId;
 
-  @NotBlank(message = "Seller ID is required")
-  @Column(name = "seller_id", nullable = false)
-  private String sellerId;
+    @NotBlank(message = "Seller ID is required")
+    @Column(name = "seller_id", nullable = false)
+    private String sellerId;
 
-  @Version
-  @Column(nullable = false)
-  private Long version = 0L;
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
 
-  public Trade(Order buyOrder, Order sellOrder, BigDecimal executionPrice) {
-    this.ticker = buyOrder.getTicker();
-    this.price = executionPrice;
-    this.quantity = Math.min(buyOrder.getQuantity(), sellOrder.getQuantity());
-    this.timestamp = Instant.now();
-    this.buyOrder = buyOrder;
-    this.sellOrder = sellOrder;
-    this.buyerId = buyOrder.getUserId();
-    this.sellerId = sellOrder.getUserId();
-    this.version = 0L;
-  }
-
-  @PrePersist
-  protected void onCreate() {
-    if (timestamp == null) {
-      timestamp = Instant.now();
+    public Trade(Order buyOrder, Order sellOrder, BigDecimal executionPrice) {
+        this.ticker = buyOrder.getTicker();
+        this.price = executionPrice;
+        this.quantity = Math.min(buyOrder.getQuantity(), sellOrder.getQuantity());
+        this.timestamp = Instant.now();
+        this.buyOrder = buyOrder;
+        this.sellOrder = sellOrder;
+        this.buyerId = buyOrder.getUserId();
+        this.sellerId = sellOrder.getUserId();
     }
-    if (version == null) {
-      version = 0L;
+
+    @PrePersist
+    protected void onCreate() {
+        if (timestamp == null) {
+            timestamp = Instant.now();
+        }
+        if (version == null) {
+            version = 0L;
+        }
     }
-  }
 }

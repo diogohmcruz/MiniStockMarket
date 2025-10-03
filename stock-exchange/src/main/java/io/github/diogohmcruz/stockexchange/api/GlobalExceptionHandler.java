@@ -17,56 +17,56 @@ import lombok.extern.slf4j.Slf4j;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
-  @ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
-    Map<String, Object> body = new HashMap<>();
-    body.put("timestamp", Instant.now());
-    body.put("status", HttpStatus.BAD_REQUEST.value());
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Object> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        var errors = new HashMap<String, Object>();
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
 
-    Map<String, String> errors = new HashMap<>();
-    ex.getBindingResult()
-        .getFieldErrors()
-        .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+        var body = Map.of(
+                "timestamp", Instant.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "message", ex.getMessage(),
+                "errors", errors);
+        return ResponseEntity.badRequest().body(body);
+    }
 
-    body.put("errors", errors);
-    return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
-  }
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
+        var errors = new HashMap<String, String>();
+        ex.getConstraintViolations()
+                .forEach(violation -> errors.put(violation.getPropertyPath().toString(), violation.getMessage()));
 
-  @ExceptionHandler(ConstraintViolationException.class)
-  public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
-    Map<String, Object> body = new HashMap<>();
-    body.put("timestamp", Instant.now());
-    body.put("status", HttpStatus.BAD_REQUEST.value());
+        var body = Map.of(
+                "timestamp", Instant.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "message", ex.getMessage(),
+                "errors", errors);
+        return ResponseEntity.badRequest().body(body);
+    }
 
-    Map<String, String> errors = new HashMap<>();
-    ex.getConstraintViolations()
-        .forEach(
-            violation ->
-                errors.put(violation.getPropertyPath().toString(), violation.getMessage()));
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleConstraintViolation(IllegalArgumentException ex) {
+        var body = Map.of(
+                "timestamp", Instant.now(),
+                "status", HttpStatus.BAD_REQUEST.value(),
+                "error", HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                "message", ex.getMessage());
+        return ResponseEntity.badRequest().body(body);
+    }
 
-    body.put("errors", errors);
-    return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
-  }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleAllExceptions(Exception ex) {
+        var body = Map.of(
+                "timestamp", Instant.now(),
+                "status", HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "error", HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
+                "message", ex.getMessage());
 
-  @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<Object> handleConstraintViolation(IllegalArgumentException ex) {
-    Map<String, Object> body = Map.of(
-        "timestamp", Instant.now(),
-        "status", HttpStatus.BAD_REQUEST.value(),
-        "error", HttpStatus.BAD_REQUEST.getReasonPhrase(),
-        "message", ex.getMessage());
-    return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
-  }
-
-  @ExceptionHandler(Exception.class)
-  public ResponseEntity<Object> handleAllExceptions(Exception ex) {
-    Map<String, Object> body = new HashMap<>();
-    body.put("timestamp", Instant.now());
-    body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-    body.put("error", "Internal Server Error");
-    body.put("message", ex.getMessage());
-
-    log.error("Unexpected error occurred", ex);
-    return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
-  }
+        log.error("Unexpected error occurred", ex);
+        return ResponseEntity.internalServerError().body(body);
+    }
 }

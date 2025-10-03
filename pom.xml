@@ -23,10 +23,18 @@
         <module>trader</module>
         <module>stock-exchange</module>
     </modules>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/diogohmcruz/MiniStockExchange</url>
+        </repository>
+    </distributionManagement>
     <properties>
-        <googleJavaFormat.version>1.27.0</googleJavaFormat.version>
         <java.version>24</java.version>
-        <spotless.version>2.44.4</spotless.version>
+        <palantirJavaFormat.version>2.75.0</palantirJavaFormat.version>
+        <spotless.version>3.0.0</spotless.version>
         <springdoc.version>2.8.5</springdoc.version>
     </properties>
     <dependencies>
@@ -135,14 +143,6 @@
         </repository>
     </repositories>
 
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/diogohmcruz/MiniStockExchange</url>
-        </repository>
-    </distributionManagement>
-
     <build>
         <pluginManagement>
             <plugins>
@@ -178,10 +178,10 @@
                 <configuration>
                     <java>
                         <formatAnnotations />
-                        <googleJavaFormat>
-                            <reflowLongStrings>true</reflowLongStrings>
-                            <version>${googleJavaFormat.version}</version>
-                        </googleJavaFormat>
+                        <palantirJavaFormat>
+                            <version>${palantirJavaFormat.version}</version>
+                            <formatJavadoc>true</formatJavadoc>
+                        </palantirJavaFormat>
                         <importOrder>
                             <order>\#,jakarta|javax|java,org,com</order>
                         </importOrder>

@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 @Data
 @RequiredArgsConstructor
 public final class TickerCandle {
-  private final String ticker;
-  private final BigDecimal lowestAsk;
-  private final BigDecimal highestBid;
+    private final String ticker;
+    private final BigDecimal lowestAsk;
+    private final BigDecimal highestBid;
 }

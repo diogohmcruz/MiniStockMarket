@@ -7,13 +7,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class WebClientConfig {
-  @Value("${stockexchange.api.base-url:http://localhost:8080}")
-  private String orderApiUrl;
+    @Value("${stockexchange.api.base-url:http://localhost:8080}")
+    private String orderApiUrl;
 
-  @Bean
-  public WebClient webClient(WebClient.Builder builder) {
-    return builder
-        .baseUrl(orderApiUrl)
-        .build();
-  }
+    @Bean
+    public WebClient webClient(WebClient.Builder builder) {
+        return builder.baseUrl(orderApiUrl).build();
+    }
 }

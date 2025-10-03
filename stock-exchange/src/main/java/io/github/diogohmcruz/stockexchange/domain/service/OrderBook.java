@@ -13,45 +13,42 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 class OrderBook {
-  @Getter private final String ticker;
+    @Getter
+    private final String ticker;
 
-  private final PriorityBlockingQueue<Order> buyOrders =
-      new PriorityBlockingQueue<>(
-          11,
-          Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue())
-              .reversed()
-              .thenComparing(Order::getTimestamp));
+    private final PriorityBlockingQueue<Order> buyOrders = new PriorityBlockingQueue<>(
+            11,
+            Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue())
+                    .reversed()
+                    .thenComparing(Order::getTimestamp));
 
-  private final PriorityBlockingQueue<Order> sellOrders =
-      new PriorityBlockingQueue<>(
-          11,
-          Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue())
-              .thenComparing(Order::getTimestamp));
+    private final PriorityBlockingQueue<Order> sellOrders = new PriorityBlockingQueue<>(
+            11,
+            Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue()).thenComparing(Order::getTimestamp));
 
-  @Locked.Write
-  public boolean addOrder(Order order) {
-    return order.getType() == OrderType.BUY ? buyOrders.offer(order) : sellOrders.offer(order);
-  }
+    @Locked.Write
+    public boolean addOrder(Order order) {
+        return order.getType() == OrderType.BUY ? buyOrders.offer(order) : sellOrders.offer(order);
+    }
 
-  @Locked.Read
-  public Order getBestMatchingOrder(Order order) {
-    PriorityBlockingQueue<Order> matchingOrders =
-        OrderType.BUY.equals(order.getType()) ? sellOrders : buyOrders;
-    return matchingOrders.peek();
-  }
+    @Locked.Read
+    public Order getBestMatchingOrder(Order order) {
+        var matchingOrders = OrderType.BUY.equals(order.getType()) ? sellOrders : buyOrders;
+        return matchingOrders.peek();
+    }
 
-  @Locked.Write
-  public boolean removeOrder(Order order) {
-    return order.getType() == OrderType.BUY ? buyOrders.remove(order) : sellOrders.remove(order);
-  }
+    @Locked.Write
+    public boolean removeOrder(Order order) {
+        return order.getType() == OrderType.BUY ? buyOrders.remove(order) : sellOrders.remove(order);
+    }
 
-  @Locked.Read
-  public List<Order> getActiveBuyOrders() {
-    return new ArrayList<>(buyOrders);
-  }
+    @Locked.Read
+    public List<Order> getActiveBuyOrders() {
+        return new ArrayList<>(buyOrders);
+    }
 
-  @Locked.Read
-  public List<Order> getActiveSellOrders() {
-    return new ArrayList<>(sellOrders);
-  }
+    @Locked.Read
+    public List<Order> getActiveSellOrders() {
+        return new ArrayList<>(sellOrders);
+    }
 }
