@@ -27,7 +27,7 @@ public class ThreadPoolConfig {
         executor.setThreadFactory(
                 SimpleThreadFactory.builder().nameFormat("broker-%d").build());
         executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(5);
+        executor.setAwaitTerminationSeconds(60);
         executor.initialize();
         return executor;
     }
