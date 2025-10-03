@@ -1,28 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern>%d{ISO8601} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %highlight(%msg%n)</pattern>
-    </encoder>
-  </appender>
-  <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
-    <http>
-      <url>http://localhost:3100/loki/api/v1/push</url>
-    </http>
-    <format>
-      <label>
-        <pattern>app=mini-stock-exchange,host=${HOSTNAME},trace_id=%X{traceId:-NONE},level=%level,thread=%thread</pattern>
-        <readMarkers>true</readMarkers>
-        <metricsEnabled>true</metricsEnabled>
-      </label>
-    </format>
-    <message>
-      <pattern>%X{traceId:-NONE} %-5level %logger{36} - %msg%n</pattern>
-    </message>
-  </appender>
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="CONSOLE"/>
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601} [%thread] %highlight(%-5level) %cyan(%logger{36}) - %highlight(%msg%n)</pattern>
+        </encoder>
+    </appender>
 
-  <root level="INFO">
-    <appender-ref ref="CONSOLE"/>
-    <appender-ref ref="LOKI" />
-  </root>
+    <appender name="LOKI_ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="LOKI"/>
+        <queueSize>2048</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+    <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+        <http>
+            <url>http://localhost:3100/loki/api/v1/push</url>
+        </http>
+        <format>
+            <label>
+                <pattern>
+                    app=mini-stock-exchange,host=${HOSTNAME},trace_id=%X{traceId:-NONE},level=%level,thread=%thread
+                </pattern>
+                <readMarkers>true</readMarkers>
+                <metricsEnabled>true</metricsEnabled>
+            </label>
+        </format>
+        <message>
+            <pattern>%X{traceId:-NONE} %-5level %logger{36} - %msg%n</pattern>
+        </message>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="ASYNC"/>
+        <appender-ref ref="LOKI_ASYNC"/>
+    </root>
 </configuration>
