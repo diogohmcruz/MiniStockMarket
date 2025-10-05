@@ -22,15 +22,35 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.UUIDSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        client.dns.lookup: use_all_dns_ips
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.UUIDDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      group-id: ${spring.application.name}
+      properties:
+        spring.json.trusted.packages: '*'
+        spring.json.value.default.type: io.github.diogohmcruz.marketlibrary.api.dto.OrderDTO
 
 server:
-  compression:
-    enabled: true
-  http2:
-    enabled: true
   port: 8080
 
-order:
-  default-ttl-seconds: 3600
-  max-ttl-seconds: 86400
-  min-ttl-seconds: 60
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+live-market:
+  kafka:
+    enabled: true
+    order-topic: orders
+    trade-topic: trades

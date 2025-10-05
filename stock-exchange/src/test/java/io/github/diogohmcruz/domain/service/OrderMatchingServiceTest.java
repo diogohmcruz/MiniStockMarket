@@ -8,7 +8,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
@@ -16,12 +15,13 @@ import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
 import io.github.diogohmcruz.stockexchange.StockExchangeApplication;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderMatchingService;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(classes = StockExchangeApplication.class)
 public class OrderMatchingServiceTest {
-    @Autowired
-    private OrderMatchingService orderMatchingService;
+    private final OrderMatchingService orderMatchingService;
 
     @Test
     void testConcurrentOrderProcessing() throws InterruptedException {
@@ -38,7 +38,7 @@ public class OrderMatchingServiceTest {
                     order.setPrice(new BigDecimal("100.00"));
                     order.setQuantity(10);
                     order.setUserId("test-" + orderNumber);
-                    orderMatchingService.submitOrder(order);
+                    orderMatchingService.submit(order);
                 });
             }
 

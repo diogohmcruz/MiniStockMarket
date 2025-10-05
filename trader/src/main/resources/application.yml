@@ -1,8 +1,19 @@
-server:
-  compression:
-    enabled: true
-  port: 8081
-
 spring:
   application:
     name: trader
+
+server:
+  port: 8081
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+stock-exchange:
+  api:
+    base-url: http://localhost:8080

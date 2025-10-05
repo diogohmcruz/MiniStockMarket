@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
@@ -15,12 +16,13 @@ import org.springframework.web.reactive.function.client.WebClientRequestExceptio
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import io.github.diogohmcruz.marketlibrary.api.dto.CreateOrderRequest;
-import io.github.diogohmcruz.marketlibrary.api.dto.OrderResponse;
+import io.github.diogohmcruz.marketlibrary.api.dto.OrderDTO;
 import io.github.diogohmcruz.trader.infrastructure.generator.RandomOrderGenerator;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
+@ConditionalOnProperty(name = "simulation.enabled", havingValue = "true", matchIfMissing = true)
 public class OrderSimulationRunner {
 
     private final RandomOrderGenerator orderGenerator;
@@ -50,8 +52,8 @@ public class OrderSimulationRunner {
         return null;
     }
 
-    private static void logResponse(OrderResponse orderResponse) {
-        log.info("User {} sent order {}", orderResponse.getUserId(), orderResponse);
+    private static void logResponse(OrderDTO orderDTO) {
+        log.info("User {} sent order {}", orderDTO.getUserId(), orderDTO);
     }
 
     @PostConstruct
@@ -59,22 +61,16 @@ public class OrderSimulationRunner {
         IntStream.range(0, executor.getMaxPoolSize()).forEach(i -> scheduleNext());
     }
 
-    private void scheduleNext() {
-        CompletableFuture.supplyAsync(orderGenerator::generateOrderRequest, executor)
-                .thenApplyAsync(
-                        createOrderRequest -> this.sendRequest(createOrderRequest)
-                                .thenAccept(OrderSimulationRunner::logResponse)
-                                .exceptionally(ex -> handleException(ex, createOrderRequest)),
-                        executor)
-                .exceptionally(throwable -> {
-                    log.warn(throwable.getMessage(), throwable);
-                    return null;
-                })
+    public void scheduleNext() {
+        var orderRequest = orderGenerator.generateOrderRequest();
+        this.sendRequest(orderRequest)
+                .thenAccept(OrderSimulationRunner::logResponse)
+                .exceptionally(ex -> handleException(ex, orderRequest))
                 .thenRunAsync(this::scheduleNext, CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS, executor));
     }
 
     @Async("traderTaskExecutor")
-    public CompletableFuture<OrderResponse> sendRequest(CreateOrderRequest order) {
+    public CompletableFuture<OrderDTO> sendRequest(CreateOrderRequest order) {
         var userId = Thread.currentThread().getName();
         return webClient
                 .post()
@@ -82,7 +78,7 @@ public class OrderSimulationRunner {
                 .header("user", userId)
                 .bodyValue(order)
                 .retrieve()
-                .bodyToMono(OrderResponse.class)
+                .bodyToMono(OrderDTO.class)
                 .toFuture();
     }
 }

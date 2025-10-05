@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: live-market
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: live-market-consumer
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.UUIDDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: '*'
+        spring.json.value.default.type: io.github.diogohmcruz.marketlibrary.api.dto.TradeDTO
+
+server:
+  port: 8087
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+live-market:
+  kafka:
+    trade-topic: trades
+  udp:
+    host: 255.255.255.255
+    port: 9999

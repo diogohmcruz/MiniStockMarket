@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.0</version>
+        <version>3.5.6</version>
     </parent>
 
     <groupId>io.github.diogohmcruz</groupId>
@@ -20,8 +20,9 @@
     <description>Mini Stock Market with Spring Boot and Multithreading</description>
     <modules>
         <module>market-library</module>
-        <module>trader</module>
         <module>stock-exchange</module>
+        <module>live-market</module>
+        <module>trader</module>
     </modules>
 
     <distributionManagement>
@@ -35,8 +36,20 @@
         <java.version>24</java.version>
         <palantirJavaFormat.version>2.75.0</palantirJavaFormat.version>
         <spotless.version>3.0.0</spotless.version>
-        <springdoc.version>2.8.5</springdoc.version>
+        <springdoc.version>2.8.13</springdoc.version>
+        <testcontainers.version>1.20.1</testcontainers.version>
     </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -183,7 +196,7 @@
                 <version>${spotless.version}</version>
                 <configuration>
                     <java>
-                        <formatAnnotations/>
+                        <formatAnnotations />
                         <palantirJavaFormat>
                             <version>${palantirJavaFormat.version}</version>
                             <formatJavadoc>true</formatJavadoc>
@@ -191,14 +204,14 @@
                         <importOrder>
                             <order>\#,jakarta|javax|java,org,com</order>
                         </importOrder>
-                        <removeUnusedImports/>
+                        <removeUnusedImports />
                     </java>
                     <pom>
                         <sortPom>
                             <expandEmptyElements>false</expandEmptyElements>
                             <indentSchemaLocation>true</indentSchemaLocation>
                             <nrOfIndentSpace>4</nrOfIndentSpace>
-                            <sortDependencyExclusions/>
+                            <sortDependencyExclusions />
                             <sortProperties>true</sortProperties>
                             <spaceBeforeCloseEmptyElement>true</spaceBeforeCloseEmptyElement>
                         </sortPom>

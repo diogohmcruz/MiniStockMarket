@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import io.github.diogohmcruz.marketlibrary.api.dto.CreateOrderRequest;
-import io.github.diogohmcruz.marketlibrary.api.dto.OrderResponse;
+import io.github.diogohmcruz.marketlibrary.api.dto.OrderDTO;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderBookService;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderMatchingService;
@@ -57,18 +57,15 @@ public class OrderController {
                 content =
                         @Content(
                                 mediaType = MediaType.APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = OrderResponse.class))),
+                                schema = @Schema(implementation = OrderDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid order data provided")
     })
     @PostMapping
-    public CompletableFuture<ResponseEntity<OrderResponse>> submitOrder(
+    public CompletableFuture<ResponseEntity<OrderDTO>> submitOrder(
             @Valid @RequestBody CreateOrderRequest request, @Valid @RequestHeader("user") String userId) {
-        return CompletableFuture.supplyAsync(() -> toOrder(request, userId)).thenApply(order -> {
-            var isAdded = orderMatchingService.submitOrder(order);
-            var status = isAdded ? HttpStatus.OK : HttpStatus.INTERNAL_SERVER_ERROR;
-            var orderResponse = fromOrder(order);
-            return ResponseEntity.status(status).body(orderResponse);
-        });
+        var order = toOrder(request, userId);
+        return orderMatchingService.submit(order).thenApply(orderDTO -> ResponseEntity.accepted()
+                .body(orderDTO));
     }
 
     @Operation(summary = "Get order by ID")
@@ -76,11 +73,11 @@ public class OrderController {
         @ApiResponse(
                 responseCode = "200",
                 description = "Order found",
-                content = @Content(schema = @Schema(implementation = OrderResponse.class))),
+                content = @Content(schema = @Schema(implementation = OrderDTO.class))),
         @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @GetMapping("/{orderId}")
-    public ResponseEntity<OrderResponse> getOrder(@PathVariable UUID orderId) {
+    public ResponseEntity<OrderDTO> getOrder(@PathVariable UUID orderId) {
         return orderBookService
                 .getOrderById(orderId)
                 .map(OrderController::fromOrder)
@@ -90,7 +87,7 @@ public class OrderController {
 
     @Operation(summary = "Get all active orders for a ticker")
     @GetMapping("/by-ticker/{ticker}")
-    public ResponseEntity<Map<String, List<OrderResponse>>> getOrdersByTicker(
+    public ResponseEntity<Map<String, List<OrderDTO>>> getOrdersByTicker(
             @Parameter(description = "Stock ticker symbol") @PathVariable String ticker) {
         var orderBook = Map.of(
                 "buyOrders",
@@ -106,7 +103,7 @@ public class OrderController {
 
     @Operation(summary = "Get user's orders")
     @GetMapping("/my-orders")
-    public ResponseEntity<Page<OrderResponse>> getMyOrders(
+    public ResponseEntity<Page<OrderDTO>> getMyOrders(
             String userId,
             @Parameter(description = "Include inactive orders") @RequestParam(defaultValue = "false")
                     boolean includeInactive,
@@ -153,8 +150,8 @@ public class OrderController {
         return order;
     }
 
-    private static OrderResponse fromOrder(Order order) {
-        var response = new OrderResponse();
+    private static OrderDTO fromOrder(Order order) {
+        var response = new OrderDTO();
         response.setId(order.getId());
         response.setType(order.getType());
         response.setTicker(order.getTicker());

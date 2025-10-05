@@ -1,7 +1,6 @@
 package io.github.diogohmcruz.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import jakarta.transaction.Transactional;
 import java.math.BigDecimal;

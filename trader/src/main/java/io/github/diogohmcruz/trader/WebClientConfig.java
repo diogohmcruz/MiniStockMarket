@@ -7,7 +7,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class WebClientConfig {
-    @Value("${stockexchange.api.base-url:http://localhost:8080}")
+    @Value("${stock-exchange.api.base-url}")
     private String orderApiUrl;
 
     @Bean

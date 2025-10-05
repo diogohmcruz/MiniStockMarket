@@ -8,6 +8,12 @@ spring:
     virtual:
       enabled: true
 
+server:
+  compression:
+    enabled: true
+  http2:
+    enabled: true
+
 logging:
   include-application-name: false
 
@@ -18,7 +24,7 @@ management:
   endpoints:
     web:
       exposure:
-          include: '*'
+        include: '*'
   otlp:
     logging:
       compression: gzip
