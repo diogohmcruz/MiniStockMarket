@@ -14,10 +14,12 @@ import lombok.extern.slf4j.Slf4j;
 public class TradeListener {
 
     private final TickerAnalyst analyst;
+    private final UdpBroadcaster broadcaster;
 
     @KafkaListener(topics = "${live-market.kafka.trade-topic}")
     public void onTrade(@Payload TradeDTO trade) {
         var ticker = analyst.process(trade);
         log.info("{} -> {}", ticker.getSymbol(), ticker);
+        broadcaster.send(ticker);
     }
 }

@@ -17,3 +17,8 @@ management:
 stock-exchange:
   api:
     base-url: http://localhost:8080
+
+live-market:
+  udp:
+    host: 255.255.255.255
+    port: 9999
