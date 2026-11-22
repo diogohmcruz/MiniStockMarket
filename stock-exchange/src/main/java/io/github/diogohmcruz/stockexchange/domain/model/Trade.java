@@ -77,7 +77,7 @@ public class Trade {
     public Trade(Order buyOrder, Order sellOrder, BigDecimal executionPrice) {
         this.ticker = buyOrder.getTicker();
         this.price = executionPrice;
-        this.quantity = Math.min(buyOrder.getQuantity(), sellOrder.getQuantity());
+        this.quantity = Math.min(buyOrder.getRemainingQuantity(), sellOrder.getRemainingQuantity());
         this.timestamp = Instant.now();
         this.buyOrder = buyOrder;
         this.sellOrder = sellOrder;

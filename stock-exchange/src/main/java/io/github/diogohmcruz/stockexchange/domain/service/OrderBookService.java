@@ -29,6 +29,11 @@ public class OrderBookService {
     private final Map<String, OrderBook> orderBooks = new ConcurrentHashMap<>();
 
     @Transactional
+    public Order save(Order order) {
+        return orderRepository.save(order);
+    }
+
+    @Transactional
     public UUID addOrder(Order order) {
         var persistedOrder = orderRepository.save(order);
         var orderBook = getOrCreateOrderBook(persistedOrder.getTicker());

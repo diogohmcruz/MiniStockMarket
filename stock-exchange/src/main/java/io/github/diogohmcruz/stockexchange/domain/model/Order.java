@@ -22,17 +22,13 @@ import java.util.Objects;
 import java.util.UUID;
 
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 @Entity
 @Table(name = "orders")
-@Getter
-@Setter
-@ToString
 @NoArgsConstructor
+@Data
 public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -69,6 +65,9 @@ public class Order {
     private String userId;
 
     @Column(nullable = false)
+    private int filledQuantity = 0;
+
+    @Column(nullable = false)
     private boolean active = true;
 
     @Version
@@ -85,6 +84,21 @@ public class Order {
         }
         if (version == null) {
             version = 0L;
+        }
+    }
+
+    public int getRemainingQuantity() {
+        return quantity - filledQuantity;
+    }
+
+    public void fill(int shares) {
+        if (shares < 1 || shares > getRemainingQuantity()) {
+            throw new IllegalArgumentException(
+                    "Cannot fill " + shares + " shares, only " + getRemainingQuantity() + " remaining");
+        }
+        filledQuantity += shares;
+        if (getRemainingQuantity() == 0) {
+            active = false;
         }
     }
 

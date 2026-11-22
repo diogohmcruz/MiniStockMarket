@@ -43,13 +43,16 @@ public class OrderMatchingService {
             throw new IllegalArgumentException(errorMessage);
         }
 
-        var matchingOrder = orderBookService.getBestMatchingOrder(order);
-        if (canMatch(order, matchingOrder)) {
-            executeTrade(order, matchingOrder);
-        } else {
-            orderBookService.addOrder(order);
+        var incoming = orderBookService.save(order);
+        var restingOrder = orderBookService.getBestMatchingOrder(incoming);
+        while (incoming.getRemainingQuantity() > 0 && canMatch(incoming, restingOrder)) {
+            incoming = executeTrade(incoming, restingOrder);
+            restingOrder = orderBookService.getBestMatchingOrder(incoming);
         }
-        return order.getId();
+        if (incoming.getRemainingQuantity() > 0) {
+            orderBookService.addOrder(incoming);
+        }
+        return incoming.getId();
     }
 
     public CompletableFuture<OrderDTO> submit(Order order) {
@@ -69,11 +72,15 @@ public class OrderMatchingService {
                 : order2.getPrice().compareTo(order1.getPrice()) >= 0;
     }
 
-    private Trade executeTrade(Order order1, Order order2) {
-        var buyOrder = order1.getType() == OrderType.BUY ? order1 : order2;
-        var sellOrder = order1.getType() == OrderType.SELL ? order1 : order2;
-        var trade = new Trade(buyOrder, sellOrder, order2.getPrice());
+    private Order executeTrade(Order incoming, Order resting) {
+        var incomingIsBuy = incoming.getType() == OrderType.BUY;
+        var buyOrder = incomingIsBuy ? incoming : resting;
+        var sellOrder = incomingIsBuy ? resting : incoming;
+        var trade = new Trade(buyOrder, sellOrder, resting.getPrice());
+        buyOrder.fill(trade.getQuantity());
+        sellOrder.fill(trade.getQuantity());
 
-        return tradeService.processTrade(trade);
+        var saved = tradeService.processTrade(trade);
+        return incomingIsBuy ? saved.getBuyOrder() : saved.getSellOrder();
     }
 }
