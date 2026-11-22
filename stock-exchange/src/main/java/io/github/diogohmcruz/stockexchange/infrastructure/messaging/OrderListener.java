@@ -1,6 +1,9 @@
 package io.github.diogohmcruz.stockexchange.infrastructure.messaging;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
@@ -13,14 +16,16 @@ import lombok.extern.slf4j.Slf4j;
 /** Consumes {@link Order} messages and delegates to the {@link OrderMatchingService}. */
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "live-market.kafka.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class OrderListener {
 
     private final OrderMatchingService matchingService;
 
     @KafkaListener(topics = "${live-market.kafka.order-topic}")
-    public void onOrder(@Payload OrderDTO orderDTO) {
+    public void onOrder(@Payload OrderDTO orderDTO, @Header(KafkaHeaders.OFFSET) long offset) {
         var order = map(orderDTO);
+        order.setSequence(offset);
         matchingService.match(order);
     }
 

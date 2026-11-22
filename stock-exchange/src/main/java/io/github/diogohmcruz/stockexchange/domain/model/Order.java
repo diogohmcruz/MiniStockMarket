@@ -67,6 +67,10 @@ public class Order {
     @Column(nullable = false)
     private int filledQuantity = 0;
 
+    /** Position of the order in its ticker partition (Kafka offset); breaks price ties in the order book. */
+    @Column
+    private Long sequence;
+
     @Column(nullable = false)
     private boolean active = true;
 

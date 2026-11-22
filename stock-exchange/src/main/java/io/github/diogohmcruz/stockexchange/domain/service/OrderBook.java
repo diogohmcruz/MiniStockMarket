@@ -1,5 +1,6 @@
 package io.github.diogohmcruz.stockexchange.domain.service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -16,15 +17,19 @@ class OrderBook {
     @Getter
     private final String ticker;
 
-    private final PriorityBlockingQueue<Order> buyOrders = new PriorityBlockingQueue<>(
-            11,
-            Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue())
-                    .reversed()
-                    .thenComparing(Order::getTimestamp));
+    /**
+     * Time priority among orders at the same price: the arrival sequence (Kafka offset within the ticker partition)
+     * wins; orders without a sequence fall back to their creation timestamp.
+     */
+    private static final Comparator<Order> TIME_PRIORITY = Comparator.comparing(
+                    Order::getSequence, Comparator.nullsLast(Comparator.<Long>naturalOrder()))
+            .thenComparing(Order::getTimestamp);
 
-    private final PriorityBlockingQueue<Order> sellOrders = new PriorityBlockingQueue<>(
-            11,
-            Comparator.<Order>comparingDouble(o -> o.getPrice().doubleValue()).thenComparing(Order::getTimestamp));
+    private final PriorityBlockingQueue<Order> buyOrders = new PriorityBlockingQueue<>(
+            11, Comparator.comparing(Order::getPrice, Comparator.<BigDecimal>reverseOrder()).thenComparing(TIME_PRIORITY));
+
+    private final PriorityBlockingQueue<Order> sellOrders =
+            new PriorityBlockingQueue<>(11, Comparator.comparing(Order::getPrice).thenComparing(TIME_PRIORITY));
 
     @Locked.Write
     public boolean addOrder(Order order) {

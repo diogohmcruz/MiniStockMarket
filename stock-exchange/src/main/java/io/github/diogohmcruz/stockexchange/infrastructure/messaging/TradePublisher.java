@@ -1,6 +1,5 @@
 package io.github.diogohmcruz.stockexchange.infrastructure.messaging;
 
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -19,15 +18,15 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class TradePublisher {
 
-    private final KafkaTemplate<UUID, TradeDTO> kafkaTemplate;
+    private final KafkaTemplate<String, TradeDTO> kafkaTemplate;
 
     @Value("${live-market.kafka.trade-topic}")
     private String tradeTopic;
 
     @Async
-    public CompletableFuture<SendResult<UUID, TradeDTO>> publish(Trade trade) {
+    public CompletableFuture<SendResult<String, TradeDTO>> publish(Trade trade) {
         var tradeDTO = map(trade);
-        return kafkaTemplate.send(tradeTopic, trade.getId(), tradeDTO).whenComplete((_, ex) -> {
+        return kafkaTemplate.send(tradeTopic, trade.getId().toString(), tradeDTO).whenComplete((_, ex) -> {
             if (ex != null) {
                 log.error("Async failure publishing trade event {}: {}", trade.getId(), ex.getMessage());
             } else {
