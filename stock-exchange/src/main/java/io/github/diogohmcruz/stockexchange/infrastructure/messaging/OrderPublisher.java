@@ -36,9 +36,12 @@ public class OrderPublisher {
 
     private static OrderDTO map(Order order) {
         var orderDTO = new OrderDTO();
+        orderDTO.setId(order.getId());
         orderDTO.setTicker(order.getTicker());
         orderDTO.setTimestamp(order.getTimestamp());
         orderDTO.setActive(order.isActive());
+        orderDTO.setStatus(order.getStatus());
+        orderDTO.setFilledQuantity(order.getFilledQuantity());
         orderDTO.setUserId(order.getUserId());
         orderDTO.setType(order.getType());
         orderDTO.setPrice(order.getPrice());

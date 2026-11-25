@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 
+import io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -41,6 +42,12 @@ public class OrderDTO {
     @Schema(description = "User ID of the trader")
     private String userId;
 
-    @Schema(description = "Whether the order is still active")
+    @Schema(description = "Number of shares already executed")
+    private int filledQuantity;
+
+    @Schema(description = "Lifecycle status of the order")
+    private OrderStatus status;
+
+    @Schema(description = "Whether the order is still active (derived from the status)")
     private boolean active;
 }

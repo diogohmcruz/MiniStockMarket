@@ -22,6 +22,7 @@ import org.springframework.validation.annotation.Validated;
 import io.github.diogohmcruz.stockexchange.domain.model.Trade;
 import io.github.diogohmcruz.stockexchange.domain.model.TradeStatistics;
 import io.github.diogohmcruz.stockexchange.domain.repositories.TradeRepository;
+import io.github.diogohmcruz.stockexchange.infrastructure.TransactionCallbacks;
 import io.github.diogohmcruz.stockexchange.infrastructure.messaging.TradePublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,11 +39,14 @@ public class TradeService {
     @Transactional
     public Trade processTrade(@Valid Trade trade) {
         var savedTrade = tradeRepository.save(trade);
-        try {
-            tradePublisher.publish(savedTrade);
-        } catch (Exception e) {
-            log.warn("Failed to publish trade event {}", savedTrade.getId(), e);
-        }
+        // Only announce the trade once the transaction that persisted it has committed.
+        TransactionCallbacks.afterCommit(() -> {
+            try {
+                tradePublisher.publish(savedTrade);
+            } catch (Exception e) {
+                log.warn("Failed to publish trade event {}", savedTrade.getId(), e);
+            }
+        });
         log.info(
                 "Trade executed: [{}] {}x {} at {} between {} and {}",
                 savedTrade.getId(),

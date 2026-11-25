@@ -37,7 +37,6 @@ class TickerControllerTest {
                     order.setPrice(BigDecimal.TEN);
                     order.setQuantity(10);
                     order.setExpirationTime(Instant.now().plusSeconds(60));
-                    order.setActive(true);
                     return order;
                 })
                 .map(o -> orderRepository.save(o))

@@ -31,9 +31,11 @@ public class OrderListener {
 
     private static Order map(OrderDTO orderDTO) {
         var order = new Order();
+        if (orderDTO.getId() != null) {
+            order.setId(orderDTO.getId());
+        }
         order.setTicker(orderDTO.getTicker());
         order.setTimestamp(orderDTO.getTimestamp());
-        order.setActive(orderDTO.isActive());
         order.setUserId(orderDTO.getUserId());
         order.setType(orderDTO.getType());
         order.setPrice(orderDTO.getPrice());

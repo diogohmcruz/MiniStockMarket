@@ -36,7 +36,7 @@ public class TickerService {
         return entityManager
                 .createQuery(
                         "SELECT DISTINCT o.ticker FROM Order o "
-                                + "WHERE o.active = true AND o.expirationTime > :now "
+                                + "WHERE o.status IN (io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus.OPEN, io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus.PARTIALLY_FILLED) AND o.expirationTime > :now "
                                 + "ORDER BY o.ticker",
                         String.class)
                 .setParameter("now", Instant.now())

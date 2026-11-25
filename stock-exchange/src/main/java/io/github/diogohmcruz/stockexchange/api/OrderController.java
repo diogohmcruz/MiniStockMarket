@@ -161,6 +161,8 @@ public class OrderController {
         response.setExpirationTime(order.getExpirationTime());
         response.setUserId(order.getUserId());
         response.setActive(order.isActive());
+        response.setStatus(order.getStatus());
+        response.setFilledQuantity(order.getFilledQuantity());
         return response;
     }
 }

@@ -14,12 +14,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.repositories.OrderRepository;
-import lombok.Locked;
+import io.github.diogohmcruz.stockexchange.infrastructure.TransactionCallbacks;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Owns the in-memory order books and the persistence of orders. The books are only an index of resting orders (price
+ * and arrival priority); the authoritative state of an order is always the database row.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,59 +33,46 @@ public class OrderBookService {
 
     private final Map<String, OrderBook> orderBooks = new ConcurrentHashMap<>();
 
+    @Transactional(readOnly = true)
+    public boolean exists(UUID orderId) {
+        return orderRepository.existsById(orderId);
+    }
+
+    /** Persists a brand new order and returns the managed instance. */
     @Transactional
-    public Order save(Order order) {
+    public Order persist(Order order) {
         return orderRepository.save(order);
     }
 
-    @Transactional
-    public UUID addOrder(Order order) {
-        var persistedOrder = orderRepository.save(order);
-        var orderBook = getOrCreateOrderBook(persistedOrder.getTicker());
-        var isAdded = orderBook.addOrder(persistedOrder);
-        if (!isAdded) {
-            return null;
+    /** Best resting order on the opposite side, as indexed by the book. Does not touch the database. */
+    public Order peekBest(Order incoming) {
+        var orderBook = orderBooks.get(incoming.getTicker());
+        return orderBook == null ? null : orderBook.getBestMatchingOrder(incoming);
+    }
+
+    public void addToBook(Order order) {
+        var added = getOrCreateOrderBook(order.getTicker()).addOrder(order);
+        if (added) {
+            log.info(
+                    "Order resting in book: {} {}x {} at {} ({} remaining)",
+                    order.getType(),
+                    order.getQuantity(),
+                    order.getTicker(),
+                    order.getPrice(),
+                    order.getRemainingQuantity());
         }
-        log.info(
-                "New order added: {} {}x {} at {}",
-                persistedOrder.getType(),
-                persistedOrder.getQuantity(),
-                persistedOrder.getTicker(),
-                persistedOrder.getPrice());
-        return persistedOrder.getId();
+    }
+
+    public void removeFromBook(Order order) {
+        var orderBook = orderBooks.get(order.getTicker());
+        if (orderBook != null) {
+            orderBook.removeOrder(order);
+        }
     }
 
     @Transactional(readOnly = true)
     public Optional<Order> getOrderById(UUID orderId) {
         return orderRepository.findById(orderId);
-    }
-
-    @Transactional
-    public Order getBestMatchingOrder(Order order) {
-        String ticker = order.getTicker();
-        OrderBook orderBook = orderBooks.get(ticker);
-        if (orderBook == null) {
-            return null;
-        }
-
-        Order matchingOrder = orderBook.getBestMatchingOrder(order);
-        if (matchingOrder != null) {
-            try {
-                Order freshOrder = orderRepository.getById(matchingOrder.getId());
-
-                if (freshOrder.isValidForMatching()) {
-                    return freshOrder;
-                }
-
-                orderBook.removeOrder(matchingOrder);
-                return getBestMatchingOrder(order);
-            } catch (Exception e) {
-                log.warn("Failed to refresh order {}: {}", matchingOrder.getId(), e.getMessage());
-                orderBook.removeOrder(matchingOrder);
-                return getBestMatchingOrder(order);
-            }
-        }
-        return null;
     }
 
     @Transactional(readOnly = true)
@@ -89,25 +81,7 @@ public class OrderBookService {
         if (orderBook == null) {
             return Collections.emptyList();
         }
-
-        var orders = orderBook.getActiveBuyOrders();
-        var validOrders = new ArrayList<Order>();
-
-        orders.forEach(order -> {
-            try {
-                var freshOrder = orderRepository.findById(order.getId());
-                if (freshOrder.isPresent() && freshOrder.get().isValidForMatching()) {
-                    validOrders.add(freshOrder.get());
-                } else {
-                    orderBook.removeOrder(order);
-                }
-            } catch (Exception e) {
-                log.warn("Failed to refresh buy order {}: {}", order.getId(), e.getMessage());
-                orderBook.removeOrder(order);
-            }
-        });
-
-        return validOrders;
+        return refresh(orderBook, orderBook.getActiveBuyOrders());
     }
 
     @Transactional(readOnly = true)
@@ -116,53 +90,53 @@ public class OrderBookService {
         if (orderBook == null) {
             return Collections.emptyList();
         }
+        return refresh(orderBook, orderBook.getActiveSellOrders());
+    }
 
-        var orders = orderBook.getActiveSellOrders();
+    /** Fresh view of the indexed orders. Stale entries are dropped from the book only when the database says so. */
+    private List<Order> refresh(OrderBook orderBook, List<Order> indexed) {
         var validOrders = new ArrayList<Order>();
-
-        orders.forEach(order -> {
-            try {
-                var freshOrderOptional = orderRepository.findById(order.getId());
-                freshOrderOptional.ifPresentOrElse(
-                        freshOrder -> {
-                            if (freshOrder.isValidForMatching()) {
-                                validOrders.add(freshOrder);
-                            } else {
-                                orderBook.removeOrder(freshOrder);
-                            }
-                        },
-                        () -> orderBook.removeOrder(order));
-            } catch (Exception e) {
-                log.warn("Failed to refresh sell order {}: {}", order.getId(), e.getMessage());
+        indexed.forEach(order -> orderRepository.findById(order.getId()).ifPresentOrElse(fresh -> {
+            if (fresh.isValidForMatching()) {
+                validOrders.add(fresh);
+            } else {
                 orderBook.removeOrder(order);
             }
-        });
-
+        }, () -> orderBook.removeOrder(order)));
         return validOrders;
     }
 
     @Transactional
     public boolean cancelOrder(UUID orderId, String userId) {
-        var order = orderRepository.getById(orderId);
-        if (!order.isActive() || !order.getUserId().equals(userId)) {
+        var order = orderRepository.findById(orderId).orElse(null);
+        if (order == null || !order.getUserId().equals(userId) || !order.cancel()) {
             return false;
         }
-
-        order.setActive(false);
-        var orderBook = orderBooks.get(order.getTicker());
-        if (orderBook != null) {
-            orderBook.removeOrder(order);
-        }
-
+        TransactionCallbacks.afterCommit(() -> removeFromBook(order));
         log.info("Order cancelled: {} by user {}", orderId, userId);
         return true;
+    }
+
+    /** Marks every active order past its expiration time as EXPIRED, keeping what was already executed. */
+    @Transactional
+    public int expireOrders(Instant now) {
+        var candidates = orderRepository.findAllByStatusInAndExpirationTimeBefore(OrderStatus.ACTIVE, now);
+        var expired = 0;
+        for (var order : candidates) {
+            if (order.expire()) {
+                expired++;
+                TransactionCallbacks.afterCommit(() -> removeFromBook(order));
+            }
+        }
+        return expired;
     }
 
     @Transactional(readOnly = true)
     public Page<Order> getUserOrders(String userId, boolean includeInactive, Pageable pageable) {
         return includeInactive
                 ? orderRepository.findAllByUserIdOrderByTimestampDesc(userId, pageable)
-                : orderRepository.findAllByUserIdAndActiveOrderByTimestampDesc(userId, true, pageable);
+                : orderRepository.findAllByUserIdAndStatusInOrderByTimestampDesc(
+                        userId, OrderStatus.ACTIVE, pageable);
     }
 
     @Transactional(readOnly = true)
@@ -174,11 +148,6 @@ public class OrderBookService {
     }
 
     private OrderBook getOrCreateOrderBook(String ticker) {
-        return Optional.ofNullable(orderBooks.get(ticker)).orElse(createOrderBook(ticker));
-    }
-
-    @Locked.Write
-    private OrderBook createOrderBook(String ticker) {
         return orderBooks.computeIfAbsent(ticker, OrderBook::new);
     }
 }

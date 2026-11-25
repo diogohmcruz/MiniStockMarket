@@ -72,7 +72,7 @@ public class Trade {
 
     @Version
     @Column(nullable = false)
-    private Long version = 0L;
+    private Long version;
 
     public Trade(Order buyOrder, Order sellOrder, BigDecimal executionPrice) {
         this.ticker = buyOrder.getTicker();
@@ -89,9 +89,6 @@ public class Trade {
     protected void onCreate() {
         if (timestamp == null) {
             timestamp = Instant.now();
-        }
-        if (version == null) {
-            version = 0L;
         }
     }
 }
