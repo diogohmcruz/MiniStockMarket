@@ -13,6 +13,7 @@ public class TradeDTO {
     private UUID id;
     private Long version = 0L;
     private Instant timestamp;
+    private String venue;
     private String ticker;
     private BigDecimal price;
     private int quantity;

@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.github.diogohmcruz.marketlibrary.api.dto.CreateOrderRequest;
 import io.github.diogohmcruz.marketlibrary.api.dto.OrderDTO;
+import io.github.diogohmcruz.marketlibrary.domain.model.Instrument;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderBookService;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderMatchingService;
@@ -88,14 +89,16 @@ public class OrderController {
     @Operation(summary = "Get all active orders for a ticker")
     @GetMapping("/by-ticker/{ticker}")
     public ResponseEntity<Map<String, List<OrderDTO>>> getOrdersByTicker(
-            @Parameter(description = "Stock ticker symbol") @PathVariable String ticker) {
+            @Parameter(description = "Stock ticker symbol") @PathVariable String ticker,
+            @Parameter(description = "Venue (exchange) code") @RequestParam(defaultValue = Instrument.DEFAULT_VENUE)
+                    String venue) {
         var orderBook = Map.of(
                 "buyOrders",
-                        orderBookService.getActiveBuyOrders(ticker).stream()
+                        orderBookService.getActiveBuyOrders(venue, ticker).stream()
                                 .map(OrderController::fromOrder)
                                 .toList(),
                 "sellOrders",
-                        orderBookService.getActiveSellOrders(ticker).stream()
+                        orderBookService.getActiveSellOrders(venue, ticker).stream()
                                 .map(OrderController::fromOrder)
                                 .toList());
         return ResponseEntity.ok(orderBook);
@@ -142,6 +145,9 @@ public class OrderController {
     private static Order toOrder(CreateOrderRequest request, String userId) {
         var order = new Order();
         order.setType(request.getType());
+        if (request.getVenue() != null) {
+            order.setVenue(request.getVenue());
+        }
         order.setTicker(request.getTicker());
         order.setPrice(request.getPrice());
         order.setQuantity(request.getQuantity());
@@ -154,6 +160,7 @@ public class OrderController {
         var response = new OrderDTO();
         response.setId(order.getId());
         response.setType(order.getType());
+        response.setVenue(order.getVenue());
         response.setTicker(order.getTicker());
         response.setPrice(order.getPrice());
         response.setQuantity(order.getQuantity());

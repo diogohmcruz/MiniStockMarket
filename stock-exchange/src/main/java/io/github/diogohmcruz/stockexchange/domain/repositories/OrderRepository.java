@@ -25,8 +25,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Page<Order> findAllByUserIdAndStatusInOrderByTimestampDesc(
             String userId, Collection<OrderStatus> statuses, Pageable pageable);
 
-    List<Order> findAllByStatusInAndExpirationTimeBeforeAndTickerIn(
-            Collection<OrderStatus> statuses, Instant now, Collection<String> tickers);
+    /** Overdue active orders of the given instruments ({@code venue:ticker} keys, as in {@code Instrument.key}). */
+    @Query(
+            """
+          SELECT o FROM Order o
+          WHERE o.status IN :statuses
+          AND o.expirationTime < :now
+          AND CONCAT(o.venue, ':', o.ticker) IN :instruments
+      """)
+    List<Order> findAllOverdueByInstrumentIn(
+            @Param("statuses") Collection<OrderStatus> statuses,
+            @Param("now") Instant now,
+            @Param("instruments") Collection<String> instruments);
 
     List<Order> findAllByStatusIn(Collection<OrderStatus> statuses);
 

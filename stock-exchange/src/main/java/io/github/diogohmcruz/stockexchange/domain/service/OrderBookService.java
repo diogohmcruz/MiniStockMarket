@@ -16,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.github.diogohmcruz.marketlibrary.domain.model.Instrument;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.repositories.OrderRepository;
@@ -48,12 +49,12 @@ public class OrderBookService {
 
     /** Best resting order on the opposite side, as indexed by the book. Does not touch the database. */
     public Order peekBest(Order incoming) {
-        var orderBook = orderBooks.get(incoming.getTicker());
+        var orderBook = orderBooks.get(incoming.getInstrument());
         return orderBook == null ? null : orderBook.getBestMatchingOrder(incoming);
     }
 
     public void addToBook(Order order) {
-        var added = getOrCreateOrderBook(order.getTicker()).addOrder(order);
+        var added = getOrCreateOrderBook(order.getInstrument()).addOrder(order);
         if (added) {
             log.info(
                     "Order resting in book: {} {}x {} at {} ({} remaining)",
@@ -66,37 +67,37 @@ public class OrderBookService {
     }
 
     public void removeFromBook(Order order) {
-        var orderBook = orderBooks.get(order.getTicker());
+        var orderBook = orderBooks.get(order.getInstrument());
         if (orderBook != null) {
             orderBook.removeOrder(order);
         }
     }
 
     /**
-     * Rebuilds the books of the tickers accepted by the filter from the database. The books live in memory only, so
-     * this runs whenever this instance is handed the partitions of those tickers (startup, rebalance). Each order keeps
-     * its price/sequence priority because both are persisted. Overdue orders are kept in the book so that the next
-     * expiration sweep finds and expires them; matching skips them as stale.
+     * Rebuilds the books of the instruments accepted by the filter from the database. The books live in memory only, so
+     * this runs whenever this instance is handed the partitions of those instruments (startup, rebalance). Each order
+     * keeps its price/sequence priority because both are persisted. Overdue orders are kept in the book so that the
+     * next expiration sweep finds and expires them; matching skips them as stale.
      *
      * @return number of resting orders loaded
      */
     @Transactional(readOnly = true)
-    public int rebuildBooks(Predicate<String> tickerFilter) {
+    public int rebuildBooks(Predicate<String> instrumentFilter) {
         var resting = orderRepository.findAllByStatusIn(OrderStatus.ACTIVE).stream()
-                .filter(order -> tickerFilter.test(order.getTicker()))
-                .collect(Collectors.groupingBy(Order::getTicker));
-        orderBooks.keySet().removeIf(tickerFilter);
-        resting.forEach((ticker, orders) -> {
-            var orderBook = new OrderBook(ticker);
+                .filter(order -> instrumentFilter.test(order.getInstrument()))
+                .collect(Collectors.groupingBy(Order::getInstrument));
+        orderBooks.keySet().removeIf(instrumentFilter);
+        resting.forEach((instrument, orders) -> {
+            var orderBook = new OrderBook(instrument);
             orders.forEach(orderBook::addOrder);
-            orderBooks.put(ticker, orderBook);
+            orderBooks.put(instrument, orderBook);
         });
         return resting.values().stream().mapToInt(List::size).sum();
     }
 
-    /** Forgets the books of tickers this instance no longer owns. */
-    public void dropBooks(Predicate<String> tickerFilter) {
-        orderBooks.keySet().removeIf(tickerFilter);
+    /** Forgets the books of instruments this instance no longer owns. */
+    public void dropBooks(Predicate<String> instrumentFilter) {
+        orderBooks.keySet().removeIf(instrumentFilter);
     }
 
     @Transactional(readOnly = true)
@@ -105,8 +106,8 @@ public class OrderBookService {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> getActiveBuyOrders(String ticker) {
-        var orderBook = orderBooks.get(ticker);
+    public List<Order> getActiveBuyOrders(String venue, String ticker) {
+        var orderBook = orderBooks.get(Instrument.key(venue, ticker));
         if (orderBook == null) {
             return Collections.emptyList();
         }
@@ -114,8 +115,8 @@ public class OrderBookService {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> getActiveSellOrders(String ticker) {
-        var orderBook = orderBooks.get(ticker);
+    public List<Order> getActiveSellOrders(String venue, String ticker) {
+        var orderBook = orderBooks.get(Instrument.key(venue, ticker));
         if (orderBook == null) {
             return Collections.emptyList();
         }
@@ -151,18 +152,18 @@ public class OrderBookService {
     }
 
     /**
-     * Marks every active order past its expiration time as EXPIRED, keeping what was already executed. Only the tickers
-     * whose book this instance holds are swept: those are the ones whose partitions it owns, so the expiry and the
-     * removal from the book happen on the owner and several instances never compete for the same orders.
+     * Marks every active order past its expiration time as EXPIRED, keeping what was already executed. Only the
+     * instruments whose book this instance holds are swept: those are the ones whose partitions it owns, so the expiry,
+     * its outbox event and the removal from the book happen on the owner and several instances never compete for the
+     * same orders.
      */
     @Transactional
     public int expireOrders(Instant now) {
-        var ownedTickers = List.copyOf(orderBooks.keySet());
-        if (ownedTickers.isEmpty()) {
+        var ownedInstruments = List.copyOf(orderBooks.keySet());
+        if (ownedInstruments.isEmpty()) {
             return 0;
         }
-        var candidates = orderRepository.findAllByStatusInAndExpirationTimeBeforeAndTickerIn(
-                OrderStatus.ACTIVE, now, ownedTickers);
+        var candidates = orderRepository.findAllOverdueByInstrumentIn(OrderStatus.ACTIVE, now, ownedInstruments);
         var expired = 0;
         for (var order : candidates) {
             if (order.expire()) {
@@ -188,7 +189,7 @@ public class OrderBookService {
         return Map.of("orderCounts", tickers, "priceRanges", tickerCandles);
     }
 
-    private OrderBook getOrCreateOrderBook(String ticker) {
-        return orderBooks.computeIfAbsent(ticker, OrderBook::new);
+    private OrderBook getOrCreateOrderBook(String instrument) {
+        return orderBooks.computeIfAbsent(instrument, OrderBook::new);
     }
 }

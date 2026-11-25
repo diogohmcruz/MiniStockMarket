@@ -26,18 +26,21 @@ public class TradePublisher {
     @Async
     public CompletableFuture<SendResult<String, TradeDTO>> publish(Trade trade) {
         var tradeDTO = map(trade);
-        return kafkaTemplate.send(tradeTopic, trade.getId().toString(), tradeDTO).whenComplete((_, ex) -> {
-            if (ex != null) {
-                log.error("Async failure publishing trade event {}: {}", trade.getId(), ex.getMessage());
-            } else {
-                log.debug("Published trade event {} to topic {}", trade.getId(), tradeTopic);
-            }
-        });
+        return kafkaTemplate
+                .send(tradeTopic, trade.getId().toString(), tradeDTO)
+                .whenComplete((_, ex) -> {
+                    if (ex != null) {
+                        log.error("Async failure publishing trade event {}: {}", trade.getId(), ex.getMessage());
+                    } else {
+                        log.debug("Published trade event {} to topic {}", trade.getId(), tradeTopic);
+                    }
+                });
     }
 
     private static TradeDTO map(Trade trade) {
         var tradeDTO = new TradeDTO();
         tradeDTO.setId(trade.getId());
+        tradeDTO.setVenue(trade.getVenue());
         tradeDTO.setTicker(trade.getTicker());
         tradeDTO.setTimestamp(trade.getTimestamp());
         tradeDTO.setBuyOrderId(trade.getBuyOrder().getId());

@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 
+import io.github.diogohmcruz.marketlibrary.domain.model.Instrument;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -22,6 +23,10 @@ public class CreateOrderRequest {
     @NotBlank(message = "Ticker is required")
     @Pattern(regexp = "^[A-Z]{1,5}$", message = "Ticker must be 1-5 uppercase letters")
     private String ticker;
+
+    @Schema(description = "Venue (exchange) code; defaults to MAIN", example = "XNAS")
+    @Pattern(regexp = "^[A-Z0-9]{2,10}$", message = "Venue must be 2-10 uppercase letters or digits")
+    private String venue = Instrument.DEFAULT_VENUE;
 
     @Schema(description = "Order price per unit", example = "150.50")
     @NotNull(message = "Price is required")

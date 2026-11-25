@@ -80,8 +80,8 @@ class OrderBookRecoveryTest {
         book.cancelOrder(cancelled.getId(), "s-cancelled");
         matching.match(buy("RCA", "100.00", 4, "b1")); // s-first now has 6 left
 
-        book.dropBooks(ticker -> true); // simulate a restart: the books are gone
-        var loaded = book.rebuildBooks(ticker -> ticker.equals("RCA"));
+        book.dropBooks(instrument -> true); // simulate a restart: the books are gone
+        var loaded = book.rebuildBooks(instrument -> instrument.equals("MAIN:RCA"));
         assertThat(loaded).isEqualTo(2);
 
         matching.match(buy("RCA", "100.00", 8, "b2")); // 6 from s-first, then 2 from s-second
@@ -99,7 +99,7 @@ class OrderBookRecoveryTest {
         matching.match(sell("RCB", "50.00", 5, "keep", 1));
         matching.match(sell("RCC", "50.00", 5, "reload", 1));
 
-        book.dropBooks(ticker -> ticker.equals("RCC"));
+        book.dropBooks(instrument -> instrument.equals("MAIN:RCC"));
         matching.match(buy("RCB", "50.00", 5, "b1"));
         matching.match(buy("RCC", "50.00", 5, "b2")); // no book: rests instead of trading
 
@@ -108,7 +108,7 @@ class OrderBookRecoveryTest {
         assertThat(trades.findAll().stream().filter(t -> t.getTicker().equals("RCC")))
                 .isEmpty();
 
-        book.rebuildBooks(ticker -> ticker.equals("RCC"));
+        book.rebuildBooks(instrument -> instrument.equals("MAIN:RCC"));
         matching.match(buy("RCC", "50.00", 5, "b3")); // matches the reloaded sell
         assertThat(trades.findAll().stream().filter(t -> t.getTicker().equals("RCC")))
                 .hasSize(1);

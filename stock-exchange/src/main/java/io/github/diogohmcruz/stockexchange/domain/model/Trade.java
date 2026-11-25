@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.ColumnDefault;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -32,6 +34,10 @@ public class Trade {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @ColumnDefault("'MAIN'")
+    @Column(nullable = false, length = 10)
+    private String venue;
 
     @NotBlank(message = "Ticker symbol is required")
     @Pattern(regexp = "^[A-Z]{1,5}$", message = "Ticker must be 1-5 uppercase letters")
@@ -75,6 +81,7 @@ public class Trade {
     private Long version;
 
     public Trade(Order buyOrder, Order sellOrder, BigDecimal executionPrice) {
+        this.venue = buyOrder.getVenue();
         this.ticker = buyOrder.getTicker();
         this.price = executionPrice;
         this.quantity = Math.min(buyOrder.getRemainingQuantity(), sellOrder.getRemainingQuantity());

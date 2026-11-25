@@ -19,6 +19,9 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.hibernate.annotations.ColumnDefault;
+
+import io.github.diogohmcruz.marketlibrary.domain.model.Instrument;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
 import lombok.Data;
@@ -37,6 +40,12 @@ public class Order {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderType type;
+
+    @NotBlank(message = "Venue is required")
+    @Pattern(regexp = "^[A-Z0-9]{2,10}$", message = "Venue must be 2-10 uppercase letters or digits")
+    @ColumnDefault("'MAIN'")
+    @Column(nullable = false, length = 10)
+    private String venue = Instrument.DEFAULT_VENUE;
 
     @NotBlank(message = "Ticker symbol is required")
     @Pattern(regexp = "^[A-Z]{1,5}$", message = "Ticker must be 1-5 uppercase letters")
@@ -87,6 +96,11 @@ public class Order {
         if (expirationTime == null) {
             expirationTime = timestamp.plusSeconds(3600);
         }
+    }
+
+    /** Key of the order book this order belongs to: {@code venue:ticker}. */
+    public String getInstrument() {
+        return Instrument.key(venue, ticker);
     }
 
     public int getRemainingQuantity() {

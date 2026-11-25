@@ -14,8 +14,9 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 class OrderBook {
+    /** {@code venue:ticker} */
     @Getter
-    private final String ticker;
+    private final String instrument;
 
     /**
      * Time priority among orders at the same price: the arrival sequence (Kafka offset within the ticker partition)
@@ -26,10 +27,12 @@ class OrderBook {
             .thenComparing(Order::getTimestamp);
 
     private final PriorityBlockingQueue<Order> buyOrders = new PriorityBlockingQueue<>(
-            11, Comparator.comparing(Order::getPrice, Comparator.<BigDecimal>reverseOrder()).thenComparing(TIME_PRIORITY));
+            11,
+            Comparator.comparing(Order::getPrice, Comparator.<BigDecimal>reverseOrder())
+                    .thenComparing(TIME_PRIORITY));
 
-    private final PriorityBlockingQueue<Order> sellOrders =
-            new PriorityBlockingQueue<>(11, Comparator.comparing(Order::getPrice).thenComparing(TIME_PRIORITY));
+    private final PriorityBlockingQueue<Order> sellOrders = new PriorityBlockingQueue<>(
+            11, Comparator.comparing(Order::getPrice).thenComparing(TIME_PRIORITY));
 
     @Locked.Write
     public boolean addOrder(Order order) {

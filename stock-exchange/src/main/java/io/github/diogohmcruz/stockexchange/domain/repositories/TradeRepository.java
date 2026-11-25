@@ -3,6 +3,7 @@ package io.github.diogohmcruz.stockexchange.domain.repositories;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Scanner;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -45,4 +46,6 @@ public interface TradeRepository extends JpaRepository<Trade, UUID> {
 
     @Query("SELECT t FROM Trade t WHERE t.buyerId = :userId OR t.sellerId = :userId " + "ORDER BY t.timestamp DESC")
     List<Trade> findUserTrades(@Param("userId") String userId);
+
+    long countAllByTicker(String ticker);
 }

@@ -22,6 +22,9 @@ public class OrderDTO {
     @Schema(description = "Type of order (BUY/SELL)")
     private OrderType type;
 
+    @Schema(description = "Venue (exchange) the order is placed on")
+    private String venue;
+
     @Schema(description = "Stock ticker symbol")
     private String ticker;
 

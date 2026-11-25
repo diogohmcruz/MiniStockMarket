@@ -46,7 +46,7 @@ public class OrderListener implements ConsumerSeekAware {
 
     /**
      * The books live in memory, so when this instance is handed partitions (startup or rebalance) the books of the
-     * tickers hashing to them are rebuilt from the database before their first order is processed.
+     * instruments hashing to them are rebuilt from the database before their first order is processed.
      */
     @Override
     public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
@@ -56,7 +56,7 @@ public class OrderListener implements ConsumerSeekAware {
         }
         var totalPartitions = kafkaTemplate.partitionsFor(orderTopic).size();
         var loaded = orderBookService.rebuildBooks(
-                ticker -> partitions.contains(OrderPartitions.partitionFor(ticker, totalPartitions)));
+                instrument -> partitions.contains(OrderPartitions.partitionFor(instrument, totalPartitions)));
         log.info("Assigned order partitions {}: rebuilt books with {} resting orders", partitions, loaded);
     }
 
@@ -68,7 +68,7 @@ public class OrderListener implements ConsumerSeekAware {
         }
         var totalPartitions = kafkaTemplate.partitionsFor(orderTopic).size();
         orderBookService.dropBooks(
-                ticker -> partitions.contains(OrderPartitions.partitionFor(ticker, totalPartitions)));
+                instrument -> partitions.contains(OrderPartitions.partitionFor(instrument, totalPartitions)));
         log.info("Revoked order partitions {}: dropped their books", partitions);
     }
 
@@ -83,6 +83,9 @@ public class OrderListener implements ConsumerSeekAware {
         var order = new Order();
         if (orderDTO.getId() != null) {
             order.setId(orderDTO.getId());
+        }
+        if (orderDTO.getVenue() != null) {
+            order.setVenue(orderDTO.getVenue());
         }
         order.setTicker(orderDTO.getTicker());
         order.setTimestamp(orderDTO.getTimestamp());

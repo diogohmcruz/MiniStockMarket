@@ -3,7 +3,6 @@ package io.github.diogohmcruz.domain.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -86,10 +85,6 @@ class OrderMatchingLifecycleTest {
         return o;
     }
 
-    private long tradeCount(String ticker) {
-        return trades.findAll().stream().filter(t -> t.getTicker().equals(ticker)).count();
-    }
-
     @Test
     void a_redelivered_order_is_processed_only_once() {
         matching.match(order(OrderType.SELL, "LCA", "100.00", 5, "seller"));
@@ -100,8 +95,11 @@ class OrderMatchingLifecycleTest {
         matching.match(buy);
         matching.match(copy);
 
-        assertThat(tradeCount("LCA")).isEqualTo(1);
-        assertThat(orders.findById(buy.getId())).get().extracting(Order::getStatus).isEqualTo(OrderStatus.FILLED);
+        assertThat(trades.countAllByTicker("LCA")).isEqualTo(1);
+        assertThat(orders.findById(buy.getId()))
+                .get()
+                .extracting(Order::getStatus)
+                .isEqualTo(OrderStatus.FILLED);
     }
 
     @Test
@@ -118,7 +116,7 @@ class OrderMatchingLifecycleTest {
         assertThat(stored.getFilledQuantity()).isEqualTo(4);
 
         matching.match(order(OrderType.BUY, "LCB", "100.00", 6, "b2"));
-        assertThat(tradeCount("LCB")).isEqualTo(1);
+        assertThat(trades.countAllByTicker("LCB")).isEqualTo(1);
     }
 
     @Test
@@ -134,7 +132,7 @@ class OrderMatchingLifecycleTest {
         assertThat(stored.getFilledQuantity()).isEqualTo(3);
 
         matching.match(order(OrderType.BUY, "LCC", "100.00", 7, "b2"));
-        assertThat(tradeCount("LCC")).isEqualTo(1);
+        assertThat(trades.countAllByTicker("LCC")).isEqualTo(1);
     }
 
     @Test
@@ -154,18 +152,52 @@ class OrderMatchingLifecycleTest {
         var sell = order(OrderType.SELL, "LCE", "100.00", 5, "seller");
         matching.match(sell);
 
-        doThrow(new IllegalStateException("boom")).doCallRealMethod().when(tradeService).processTrade(any());
+        doThrow(new IllegalStateException("boom"))
+                .doCallRealMethod()
+                .when(tradeService)
+                .processTrade(any());
         var failing = order(OrderType.BUY, "LCE", "100.00", 5, "b1");
         assertThatThrownBy(() -> matching.match(failing)).isInstanceOf(IllegalStateException.class);
 
         assertThat(orders.findById(failing.getId())).isEmpty();
-        assertThat(orders.findById(sell.getId())).get().extracting(Order::getFilledQuantity).isEqualTo(0);
+        assertThat(orders.findById(sell.getId()))
+                .get()
+                .extracting(Order::getFilledQuantity)
+                .isEqualTo(0);
         verify(tradePublisher, never()).publish(any());
 
         // The resting order is back in the book and can still be matched.
         matching.match(order(OrderType.BUY, "LCE", "100.00", 5, "b2"));
-        assertThat(tradeCount("LCE")).isEqualTo(1);
+        assertThat(trades.countAllByTicker("LCE")).isEqualTo(1);
         verify(tradePublisher, times(1)).publish(any());
+    }
+
+    @Test
+    void the_same_ticker_on_two_venues_has_independent_books() {
+        var nasdaq = order(OrderType.SELL, "LCF", "100.00", 5, "s-nasdaq");
+        nasdaq.setVenue("XNAS");
+        matching.match(nasdaq);
+
+        var frankfurt = order(OrderType.BUY, "LCF", "100.00", 5, "b-frankfurt");
+        frankfurt.setVenue("XFRA");
+        matching.match(frankfurt);
+        assertThat(trades.countAllByTicker("LCF")).isZero();
+
+        var sameVenue = order(OrderType.BUY, "LCF", "100.00", 5, "b-nasdaq");
+        sameVenue.setVenue("XNAS");
+        matching.match(sameVenue);
+
+        assertThat(trades.findAll().stream().filter(t -> t.getTicker().equals("LCF")))
+                .singleElement()
+                .satisfies(t -> {
+                    assertThat(t.getVenue()).isEqualTo("XNAS");
+                    assertThat(t.getSellerId()).isEqualTo("s-nasdaq");
+                });
+    }
+
+    @Test
+    void orders_default_to_the_main_venue() {
+        assertThat(order(OrderType.BUY, "LCG", "1.00", 1, "u").getInstrument()).isEqualTo("MAIN:LCG");
     }
 
     @Test
