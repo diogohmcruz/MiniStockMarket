@@ -25,7 +25,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Page<Order> findAllByUserIdAndStatusInOrderByTimestampDesc(
             String userId, Collection<OrderStatus> statuses, Pageable pageable);
 
-    List<Order> findAllByStatusInAndExpirationTimeBefore(Collection<OrderStatus> statuses, Instant now);
+    List<Order> findAllByStatusInAndExpirationTimeBeforeAndTickerIn(
+            Collection<OrderStatus> statuses, Instant now, Collection<String> tickers);
 
     List<Order> findAllByStatusIn(Collection<OrderStatus> statuses);
 
