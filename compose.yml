@@ -89,9 +89,58 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres:
+    image: postgres:17-alpine
+    container_name: ministockmarket-postgres
+    # Logical decoding is required by Debezium to read the outbox tables from the WAL.
+    command: [ "postgres", "-c", "wal_level=logical" ]
+    environment:
+      POSTGRES_DB: ministockmarket
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - redpanda_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ministockmarket" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  debezium-connect:
+    image: quay.io/debezium/connect:3.0
+    container_name: debezium-connect
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      BOOTSTRAP_SERVERS: redpanda:9092
+      GROUP_ID: stock-exchange-connect
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+      CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      STATUS_STORAGE_REPLICATION_FACTOR: 1
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m" # the default heap is too big for a small Colima VM
+    ports:
+      - "8084:8083" # 8083 is taken by the Redpanda console
+    networks:
+      - redpanda_network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8083/connectors" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
 networks:
   redpanda_network:
     driver: bridge
 
 volumes:
   grafana-storage:
+  postgres-data:

@@ -39,7 +39,7 @@ public class OrderListener implements ConsumerSeekAware {
 
     @KafkaListener(topics = "${live-market.kafka.order-topic}")
     public void onOrder(@Payload OrderDTO orderDTO, @Header(KafkaHeaders.OFFSET) long offset) {
-        var order = map(orderDTO);
+        var order = Mappers.toNewOrder(orderDTO);
         order.setSequence(offset);
         matchingService.match(order);
     }
@@ -77,23 +77,5 @@ public class OrderListener implements ConsumerSeekAware {
                 .filter(tp -> tp.topic().equals(orderTopic))
                 .map(TopicPartition::partition)
                 .collect(Collectors.toSet());
-    }
-
-    private static Order map(OrderDTO orderDTO) {
-        var order = new Order();
-        if (orderDTO.getId() != null) {
-            order.setId(orderDTO.getId());
-        }
-        if (orderDTO.getVenue() != null) {
-            order.setVenue(orderDTO.getVenue());
-        }
-        order.setTicker(orderDTO.getTicker());
-        order.setTimestamp(orderDTO.getTimestamp());
-        order.setUserId(orderDTO.getUserId());
-        order.setType(orderDTO.getType());
-        order.setPrice(orderDTO.getPrice());
-        order.setQuantity(orderDTO.getQuantity());
-        order.setExpirationTime(orderDTO.getExpirationTime());
-        return order;
     }
 }

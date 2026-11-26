@@ -24,7 +24,7 @@ public class OrderPublisher {
 
     @Async
     public CompletableFuture<SendResult<String, OrderDTO>> publish(Order order) {
-        var orderDTO = map(order);
+        var orderDTO = Mappers.toDto(order);
         return kafkaTemplate.send(orderTopic, order.getInstrument(), orderDTO).whenComplete((_, ex) -> {
             if (ex != null) {
                 log.error("Async failure publishing order event {}: {}", order.getId(), ex.getMessage());
@@ -32,22 +32,5 @@ public class OrderPublisher {
                 log.debug("Published order event {} to topic {}", order.getId(), orderTopic);
             }
         });
-    }
-
-    private static OrderDTO map(Order order) {
-        var orderDTO = new OrderDTO();
-        orderDTO.setId(order.getId());
-        orderDTO.setVenue(order.getVenue());
-        orderDTO.setTicker(order.getTicker());
-        orderDTO.setTimestamp(order.getTimestamp());
-        orderDTO.setActive(order.isActive());
-        orderDTO.setStatus(order.getStatus());
-        orderDTO.setFilledQuantity(order.getFilledQuantity());
-        orderDTO.setUserId(order.getUserId());
-        orderDTO.setType(order.getType());
-        orderDTO.setPrice(order.getPrice());
-        orderDTO.setQuantity(order.getQuantity());
-        orderDTO.setExpirationTime(order.getExpirationTime());
-        return orderDTO;
     }
 }

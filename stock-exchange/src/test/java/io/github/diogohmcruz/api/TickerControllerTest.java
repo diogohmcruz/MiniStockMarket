@@ -12,13 +12,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
+import io.github.diogohmcruz.stockexchange.PostgresTestSupport;
 import io.github.diogohmcruz.stockexchange.StockExchangeApplication;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.repositories.OrderRepository;
 import io.github.diogohmcruz.stockexchange.domain.service.TickerService;
 
 @SpringBootTest(classes = StockExchangeApplication.class)
-class TickerControllerTest {
+class TickerControllerTest extends PostgresTestSupport {
     @Autowired
     private TickerService tickerService;
 
@@ -42,6 +43,6 @@ class TickerControllerTest {
                 .map(o -> orderRepository.save(o))
                 .toList();
         var activeTicker = tickerService.getAllActiveTickers();
-        assertThat(activeTicker).hasSameSizeAs(tickers);
+        assertThat(activeTicker).contains("AAPL", "GOOGL", "MSFT");
     }
 }

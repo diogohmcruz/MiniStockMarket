@@ -14,7 +14,6 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
 import io.github.diogohmcruz.marketlibrary.api.dto.OrderDTO;
-import io.github.diogohmcruz.marketlibrary.api.dto.TradeDTO;
 
 /**
  * Provides in-memory {@link KafkaTemplate} stand-ins when Kafka is disabled for tests (the Kafka auto-configuration is
@@ -26,11 +25,6 @@ class TestKafkaConfiguration {
 
     @Bean
     KafkaTemplate<String, OrderDTO> orderKafkaTemplate() {
-        return completingTemplate();
-    }
-
-    @Bean
-    KafkaTemplate<String, TradeDTO> tradeKafkaTemplate() {
         return completingTemplate();
     }
 

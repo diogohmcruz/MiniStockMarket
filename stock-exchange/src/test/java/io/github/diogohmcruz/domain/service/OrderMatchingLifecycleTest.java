@@ -4,9 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,7 +12,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -24,23 +23,29 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
+import io.github.diogohmcruz.stockexchange.PostgresTestSupport;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.model.Trade;
+import io.github.diogohmcruz.stockexchange.domain.repositories.OrderOutboxRepository;
 import io.github.diogohmcruz.stockexchange.domain.repositories.OrderRepository;
+import io.github.diogohmcruz.stockexchange.domain.repositories.TradeOutboxRepository;
 import io.github.diogohmcruz.stockexchange.domain.repositories.TradeRepository;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderBookService;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderMatchingService;
+import io.github.diogohmcruz.stockexchange.domain.service.OutboxService;
 import io.github.diogohmcruz.stockexchange.domain.service.TradeService;
 import io.github.diogohmcruz.stockexchange.infrastructure.messaging.OrderPublisher;
-import io.github.diogohmcruz.stockexchange.infrastructure.messaging.TradePublisher;
 
 /** Order lifecycle guarantees: idempotency, final fills, priority and transactional consistency of book and events. */
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({OrderMatchingService.class, OrderBookService.class, TradeService.class})
-class OrderMatchingLifecycleTest {
+@ImportAutoConfiguration(JacksonAutoConfiguration.class)
+@Import({OrderMatchingService.class, OrderBookService.class, TradeService.class, OutboxService.class})
+class OrderMatchingLifecycleTest extends PostgresTestSupport {
 
     @SpringBootConfiguration
     @EntityScan(basePackageClasses = Order.class)
@@ -49,9 +54,6 @@ class OrderMatchingLifecycleTest {
 
     @MockitoBean
     OrderPublisher orderPublisher;
-
-    @MockitoBean
-    TradePublisher tradePublisher;
 
     @MockitoSpyBean
     TradeService tradeService;
@@ -67,6 +69,15 @@ class OrderMatchingLifecycleTest {
 
     @Autowired
     OrderRepository orders;
+
+    @Autowired
+    ObjectMapper json;
+
+    @Autowired
+    OrderOutboxRepository orderOutbox;
+
+    @Autowired
+    TradeOutboxRepository tradeOutbox;
 
     private static Order order(OrderType type, String ticker, String price, int quantity, String user) {
         var o = new Order();
@@ -164,12 +175,14 @@ class OrderMatchingLifecycleTest {
                 .get()
                 .extracting(Order::getFilledQuantity)
                 .isEqualTo(0);
-        verify(tradePublisher, never()).publish(any());
+        assertThat(tradeOutbox.countByAggregateId("MAIN:LCE")).isZero();
+        assertThat(orderOutbox.findAllByOrderIdOrderByCreatedAt(failing.getId()))
+                .isEmpty();
 
         // The resting order is back in the book and can still be matched.
         matching.match(order(OrderType.BUY, "LCE", "100.00", 5, "b2"));
         assertThat(trades.countAllByTicker("LCE")).isEqualTo(1);
-        verify(tradePublisher, times(1)).publish(any());
+        assertThat(tradeOutbox.countByAggregateId("MAIN:LCE")).isEqualTo(1);
     }
 
     @Test
@@ -198,6 +211,32 @@ class OrderMatchingLifecycleTest {
     @Test
     void orders_default_to_the_main_venue() {
         assertThat(order(OrderType.BUY, "LCG", "1.00", 1, "u").getInstrument()).isEqualTo("MAIN:LCG");
+    }
+
+    @Test
+    void every_state_change_is_recorded_in_the_outbox_in_the_same_transaction() throws Exception {
+        var sell = order(OrderType.SELL, "LCH", "100.00", 10, "seller");
+        matching.match(sell);
+        var buy = order(OrderType.BUY, "LCH", "100.00", 4, "buyer");
+        matching.match(buy);
+        book.cancelOrder(sell.getId(), "seller");
+
+        assertThat(orderOutbox.findAllByOrderIdOrderByCreatedAt(sell.getId()))
+                .extracting(e -> e.getType().name())
+                .containsExactly("NEW", "FILL", "CANCELLED");
+        assertThat(orderOutbox.findAllByOrderIdOrderByCreatedAt(buy.getId()))
+                .extracting(e -> e.getType().name())
+                .containsExactly("NEW", "FILL");
+        assertThat(tradeOutbox.countByAggregateId("MAIN:LCH")).isEqualTo(1);
+
+        var fill = orderOutbox.findAllByOrderIdOrderByCreatedAt(sell.getId()).get(1);
+        assertThat(fill.getAggregateId()).isEqualTo("MAIN:LCH");
+        assertThat(fill.getTradeId()).isNotNull();
+        var payload = json.readTree(fill.getPayload());
+        assertThat(payload.get("type").asText()).isEqualTo("FILL");
+        assertThat(payload.get("quantity").asInt()).isEqualTo(4);
+        assertThat(payload.at("/order/filledQuantity").asInt()).isEqualTo(4);
+        assertThat(payload.at("/order/status").asText()).isEqualTo("PARTIALLY_FILLED");
     }
 
     @Test

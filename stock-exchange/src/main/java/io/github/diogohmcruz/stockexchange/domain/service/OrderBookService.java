@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.diogohmcruz.marketlibrary.domain.model.Instrument;
+import io.github.diogohmcruz.marketlibrary.domain.model.OrderEventType;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderStatus;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.repositories.OrderRepository;
@@ -33,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class OrderBookService {
     private final OrderRepository orderRepository;
+    private final OutboxService outboxService;
 
     private final Map<String, OrderBook> orderBooks = new ConcurrentHashMap<>();
 
@@ -146,6 +148,7 @@ public class OrderBookService {
         if (order == null || !order.getUserId().equals(userId) || !order.cancel()) {
             return false;
         }
+        outboxService.orderEvent(OrderEventType.CANCELLED, order);
         TransactionCallbacks.afterCommit(() -> removeFromBook(order));
         log.info("Order cancelled: {} by user {}", orderId, userId);
         return true;
@@ -168,6 +171,7 @@ public class OrderBookService {
         for (var order : candidates) {
             if (order.expire()) {
                 expired++;
+                outboxService.orderEvent(OrderEventType.EXPIRED, order);
                 TransactionCallbacks.afterCommit(() -> removeFromBook(order));
             }
         }

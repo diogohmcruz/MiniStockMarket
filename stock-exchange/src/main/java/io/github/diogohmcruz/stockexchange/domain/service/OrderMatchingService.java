@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.diogohmcruz.marketlibrary.api.dto.OrderDTO;
+import io.github.diogohmcruz.marketlibrary.domain.model.OrderEventType;
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.model.Trade;
@@ -29,6 +30,7 @@ public class OrderMatchingService {
     private final OrderBookService orderBookService;
     private final OrderPublisher orderPublisher;
     private final TradeService tradeService;
+    private final OutboxService outboxService;
 
     /**
      * Process a single incoming order attempting to match it.
@@ -55,6 +57,7 @@ public class OrderMatchingService {
         }
 
         var incoming = orderBookService.persist(order);
+        outboxService.orderEvent(OrderEventType.NEW, incoming);
         var takenFromBook = new ArrayList<Order>();
         var traded = new ArrayList<Order>();
         TransactionCallbacks.afterRollback(() -> takenFromBook.forEach(orderBookService::addToBook));
@@ -67,8 +70,8 @@ public class OrderMatchingService {
             var resting = orderBookService.getOrderById(candidate.getId()).orElse(null);
             if (resting == null || !resting.isValidForMatching()) {
                 // Stale index entry (filled, cancelled or expired meanwhile): drop it and keep looking.
-                if (resting != null) {
-                    resting.expire();
+                if (resting != null && resting.expire()) {
+                    outboxService.orderEvent(OrderEventType.EXPIRED, resting);
                 }
                 orderBookService.removeFromBook(candidate);
                 takenFromBook.add(candidate);
@@ -112,6 +115,8 @@ public class OrderMatchingService {
         var trade = new Trade(buyOrder, sellOrder, resting.getPrice());
         buyOrder.fill(trade.getQuantity());
         sellOrder.fill(trade.getQuantity());
-        tradeService.processTrade(trade);
+        var saved = tradeService.processTrade(trade);
+        outboxService.fill(buyOrder, saved);
+        outboxService.fill(sellOrder, saved);
     }
 }

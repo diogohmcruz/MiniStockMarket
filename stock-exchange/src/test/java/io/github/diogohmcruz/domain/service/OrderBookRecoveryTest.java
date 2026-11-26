@@ -8,7 +8,9 @@ import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -17,21 +19,23 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
+import io.github.diogohmcruz.stockexchange.PostgresTestSupport;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.model.Trade;
 import io.github.diogohmcruz.stockexchange.domain.repositories.OrderRepository;
 import io.github.diogohmcruz.stockexchange.domain.repositories.TradeRepository;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderBookService;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderMatchingService;
+import io.github.diogohmcruz.stockexchange.domain.service.OutboxService;
 import io.github.diogohmcruz.stockexchange.domain.service.TradeService;
 import io.github.diogohmcruz.stockexchange.infrastructure.messaging.OrderPublisher;
-import io.github.diogohmcruz.stockexchange.infrastructure.messaging.TradePublisher;
 
 /** The books are in memory only: after losing them, they must be rebuilt from the database with the same priority. */
 @DataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-@Import({OrderMatchingService.class, OrderBookService.class, TradeService.class})
-class OrderBookRecoveryTest {
+@ImportAutoConfiguration(JacksonAutoConfiguration.class)
+@Import({OrderMatchingService.class, OrderBookService.class, TradeService.class, OutboxService.class})
+class OrderBookRecoveryTest extends PostgresTestSupport {
 
     @SpringBootConfiguration
     @EntityScan(basePackageClasses = Order.class)
@@ -40,9 +44,6 @@ class OrderBookRecoveryTest {
 
     @MockitoBean
     OrderPublisher orderPublisher;
-
-    @MockitoBean
-    TradePublisher tradePublisher;
 
     @Autowired
     OrderMatchingService matching;

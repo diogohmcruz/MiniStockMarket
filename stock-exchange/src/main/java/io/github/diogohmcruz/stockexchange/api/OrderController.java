@@ -31,6 +31,7 @@ import io.github.diogohmcruz.marketlibrary.domain.model.Instrument;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderBookService;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderMatchingService;
+import io.github.diogohmcruz.stockexchange.infrastructure.messaging.Mappers;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -81,7 +82,7 @@ public class OrderController {
     public ResponseEntity<OrderDTO> getOrder(@PathVariable UUID orderId) {
         return orderBookService
                 .getOrderById(orderId)
-                .map(OrderController::fromOrder)
+                .map(Mappers::toDto)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -95,11 +96,11 @@ public class OrderController {
         var orderBook = Map.of(
                 "buyOrders",
                         orderBookService.getActiveBuyOrders(venue, ticker).stream()
-                                .map(OrderController::fromOrder)
+                                .map(Mappers::toDto)
                                 .toList(),
                 "sellOrders",
                         orderBookService.getActiveSellOrders(venue, ticker).stream()
-                                .map(OrderController::fromOrder)
+                                .map(Mappers::toDto)
                                 .toList());
         return ResponseEntity.ok(orderBook);
     }
@@ -112,7 +113,7 @@ public class OrderController {
                     boolean includeInactive,
             Pageable pageable) {
         var orders = orderBookService.getUserOrders(userId, includeInactive, pageable);
-        return ResponseEntity.ok(orders.map(OrderController::fromOrder));
+        return ResponseEntity.ok(orders.map(Mappers::toDto));
     }
 
     @Operation(summary = "Cancel an order")
@@ -154,22 +155,5 @@ public class OrderController {
         order.setUserId(userId);
         order.setExpirationTime(Instant.now().plusSeconds(request.getTtlSeconds()));
         return order;
-    }
-
-    private static OrderDTO fromOrder(Order order) {
-        var response = new OrderDTO();
-        response.setId(order.getId());
-        response.setType(order.getType());
-        response.setVenue(order.getVenue());
-        response.setTicker(order.getTicker());
-        response.setPrice(order.getPrice());
-        response.setQuantity(order.getQuantity());
-        response.setTimestamp(order.getTimestamp());
-        response.setExpirationTime(order.getExpirationTime());
-        response.setUserId(order.getUserId());
-        response.setActive(order.isActive());
-        response.setStatus(order.getStatus());
-        response.setFilledQuantity(order.getFilledQuantity());
-        return response;
     }
 }

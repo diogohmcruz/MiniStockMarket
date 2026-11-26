@@ -13,6 +13,7 @@ import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import io.github.diogohmcruz.marketlibrary.domain.model.OrderType;
+import io.github.diogohmcruz.stockexchange.PostgresTestSupport;
 import io.github.diogohmcruz.stockexchange.StockExchangeApplication;
 import io.github.diogohmcruz.stockexchange.domain.model.Order;
 import io.github.diogohmcruz.stockexchange.domain.service.OrderMatchingService;
@@ -22,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 @ExtendWith(SpringExtension.class)
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 @SpringBootTest(classes = StockExchangeApplication.class)
-public class OrderMatchingServiceTest {
+public class OrderMatchingServiceTest extends PostgresTestSupport {
     private final OrderMatchingService orderMatchingService;
 
     @Test
